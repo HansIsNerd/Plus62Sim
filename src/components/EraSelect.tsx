@@ -44,7 +44,7 @@ const ERAS: EraConfig[] = [
 ];
 
 export default function EraSelect() {
-  const onSelect = useGameStore((s) => s.onSelect);
+  const initGame = useGameStore((s) => s.initGame);
 
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center bg-navy px-6 py-12">
@@ -62,7 +62,7 @@ export default function EraSelect() {
           <button
             key={id}
             type="button"
-            onClick={() => onSelect(id)}
+            onClick={() => initGame(id)}
             className={`
               group relative flex min-h-55 flex-col justify-between overflow-hidden
               rounded-3xl p-6 text-left text-white outline-none
