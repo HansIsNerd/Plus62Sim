@@ -1,0 +1,1 @@
+export type EraId = 'purba' | 'kerajaan' | 'modern';
