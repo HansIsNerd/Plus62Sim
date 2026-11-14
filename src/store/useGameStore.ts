@@ -1,136 +1,96 @@
 import { create } from 'zustand';
-import { STARTER_DECK } from '../data/cards';
-import type { Card, Effects } from '../data/cards';
+import { STARTER_DECK, type Card } from '../data/cards';
 
-export const MAX_QUEUE = 3;
-export const HAND_SIZE = 4;
-export const WIN_DAY = 30;
-export const DAY_MS = 3000;
+export type GameStatus = 'playing' | 'lost' | 'won';
 
-const INITIAL_STATS: Effects = { food: 60, health: 70, wealth: 20 };
-
-const clamp = (n: number) => Math.max(0, Math.min(100, n));
-
-let uidCounter = 0;
-
-// Setiap kartu di tangan/antrean punya id unik agar aksi berbasis cardId tidak ambigu
-const drawCard = (): Card => {
-  const base = STARTER_DECK[Math.floor(Math.random() * STARTER_DECK.length)];
-  uidCounter += 1;
-  return { ...base, id: `${base.id}#${uidCounter}` };
-};
-
-const refillHand = (hand: Card[]): Card[] => {
-  const next = [...hand];
-  while (next.length < HAND_SIZE) next.push(drawCard());
-  return next;
-};
+export interface Stats {
+  food: number;
+  health: number;
+  wealth: number;
+}
 
 interface GameState {
-  eraId: string | null;
-  day: number;
-  stats: Effects;
+  status: GameStatus;
+  stats: Stats;
   hand: Card[];
-  queue: Card[];
-  isPaused: boolean;
-  isGameOver: boolean;
-  isWin: boolean;
-  initGame: (eraId: string) => void;
-  queueCard: (cardId: string) => void;
-  unqueueCard: (cardId: string) => void;
-  togglePause: () => void;
-  resolveTick: () => void;
+  deck: Card[];
+  discard: Card[];
+  initGame: () => void;
+  playCard: (id: string) => void;
+  reset: () => void;
+}
+
+const HAND_SIZE = 4;
+const MAX_STAT = 100;
+const INITIAL_STATS: Stats = { food: 50, health: 50, wealth: 50 };
+
+const clamp = (v: number) => Math.max(0, Math.min(MAX_STAT, v));
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
-  eraId: null,
-  day: 1,
+  status: 'playing',
   stats: { ...INITIAL_STATS },
   hand: [],
-  queue: [],
-  isPaused: true,
-  isGameOver: false,
-  isWin: false,
+  deck: [],
+  discard: [],
 
-  initGame: (eraId) => {
+  initGame: () => {
+    const shuffled = shuffle(STARTER_DECK);
     set({
-      eraId,
-      day: 1,
+      status: 'playing',
       stats: { ...INITIAL_STATS },
-      hand: refillHand([]),
-      queue: [],
-      isPaused: true,
-      isGameOver: false,
-      isWin: false,
+      hand: shuffled.slice(0, HAND_SIZE),
+      deck: shuffled.slice(HAND_SIZE),
+      discard: [],
     });
   },
 
-  queueCard: (cardId) => {
-    const { hand, queue, isGameOver } = get();
-    if (isGameOver || queue.length >= MAX_QUEUE) return;
-    const picked = hand.find((c) => c.id === cardId);
-    if (!picked) return;
-    set({
-      hand: hand.filter((c) => c.id !== cardId),
-      queue: [...queue, picked],
-    });
-  },
+  playCard: (id) => {
+    const { status, hand, deck, discard, stats } = get();
+    if (status !== 'playing') return;
 
-  unqueueCard: (cardId) => {
-    const { hand, queue, isGameOver } = get();
-    if (isGameOver) return;
-    const picked = queue.find((c) => c.id === cardId);
-    if (!picked) return;
-    set({
-      queue: queue.filter((c) => c.id !== cardId),
-      hand: [...hand, picked],
-    });
-  },
+    const card = hand.find((c) => c.id === id);
+    if (!card) return;
 
-  togglePause: () => {
-    if (get().isGameOver) return;
-    set((s) => ({ isPaused: !s.isPaused }));
-  },
-
-  resolveTick: () => {
-    const { isGameOver, queue, hand, stats, day } = get();
-    if (isGameOver) return;
-
-    const [current, ...rest] = queue;
-
-    const next: Effects = {
-      food: stats.food - 3,
-      health: stats.health,
-      wealth: stats.wealth,
+    const newStats: Stats = {
+      food: clamp(stats.food + (card.effects.food ?? 0)),
+      health: clamp(stats.health + (card.effects.health ?? 0)),
+      wealth: clamp(stats.wealth + (card.effects.wealth ?? 0)),
     };
 
-    if (current) {
-      next.food += current.effects.food;
-      next.health += current.effects.health;
-      next.wealth += current.effects.wealth;
+    let newHand = hand.filter((c) => c.id !== id);
+    let newDeck = [...deck];
+    let newDiscard = [...discard, card];
+
+    // Deck habis -> acak ulang discard menjadi deck baru
+    if (newDeck.length === 0 && newDiscard.length > 0) {
+      newDeck = shuffle(newDiscard);
+      newDiscard = [];
     }
 
-    // Kelaparan menggerus kesehatan
-    if (next.food <= 0) next.health -= 8;
+    const drawn = newDeck.shift();
+    if (drawn) newHand = [...newHand, drawn];
 
-    const clamped: Effects = {
-      food: clamp(next.food),
-      health: clamp(next.health),
-      wealth: clamp(next.wealth),
-    };
-
-    const newDay = day + 1;
-    const lost = clamped.health <= 0;
-    const won = !lost && newDay >= WIN_DAY;
+    const lost = newStats.health <= 0 || newStats.food <= 0;
 
     set({
-      stats: clamped,
-      queue: rest,
-      hand: refillHand(hand),
-      day: newDay,
-      isGameOver: lost || won,
-      isWin: won,
-      isPaused: lost || won ? true : get().isPaused,
+      stats: newStats,
+      hand: newHand,
+      deck: newDeck,
+      discard: newDiscard,
+      status: lost ? 'lost' : status,
     });
+  },
+
+  reset: () => {
+    get().initGame();
   },
 }));

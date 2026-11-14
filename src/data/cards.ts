@@ -1,53 +1,23 @@
-export type CardTag = 'survival' | 'ekonomi' | 'risiko';
-
-export interface Effects {
-  food: number;
-  health: number;
-  wealth: number;
-}
+export type CardTag = 'food' | 'health' | 'wealth';
 
 export interface Card {
   id: string;
   name: string;
   tag: CardTag;
-  effects: Effects;
+  effects: {
+    food?: number;
+    health?: number;
+    wealth?: number;
+  };
 }
 
 export const STARTER_DECK: Card[] = [
-  {
-    id: 'berburu',
-    name: 'Berburu',
-    tag: 'risiko',
-    effects: { food: 18, health: -6, wealth: 0 },
-  },
-  {
-    id: 'bertani',
-    name: 'Bertani',
-    tag: 'survival',
-    effects: { food: 14, health: 0, wealth: 3 },
-  },
-  {
-    id: 'istirahat',
-    name: 'Istirahat',
-    tag: 'survival',
-    effects: { food: -2, health: 14, wealth: 0 },
-  },
-  {
-    id: 'berdagang',
-    name: 'Berdagang',
-    tag: 'ekonomi',
-    effects: { food: -4, health: 0, wealth: 16 },
-  },
-  {
-    id: 'menempa',
-    name: 'Menempa',
-    tag: 'ekonomi',
-    effects: { food: -5, health: -3, wealth: 12 },
-  },
-  {
-    id: 'api-unggun',
-    name: 'Api Unggun',
-    tag: 'risiko',
-    effects: { food: 6, health: 8, wealth: 0 },
-  },
+  { id: 'makan', name: 'Makan', tag: 'food', effects: { food: 15, wealth: -5 } },
+  { id: 'berburu', name: 'Berburu', tag: 'food', effects: { food: 20, health: -8 } },
+  { id: 'olahraga', name: 'Olahraga', tag: 'health', effects: { health: 12, food: -8 } },
+  { id: 'istirahat', name: 'Istirahat', tag: 'health', effects: { health: 15, food: -5 } },
+  { id: 'obat', name: 'Obat Herbal', tag: 'health', effects: { health: 20, wealth: -10 } },
+  { id: 'kerja', name: 'Kerja', tag: 'wealth', effects: { wealth: 15, health: -6, food: -4 } },
+  { id: 'dagang', name: 'Dagang', tag: 'wealth', effects: { wealth: 20, food: -8 } },
+  { id: 'menabung', name: 'Menabung', tag: 'wealth', effects: { wealth: 10, food: -2 } },
 ];

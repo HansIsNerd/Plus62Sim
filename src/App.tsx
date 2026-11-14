@@ -1,15 +1,13 @@
-import EraSelect from './components/EraSelect';
+import { useEffect } from 'react';
 import GameBoard from './components/GameBoard';
-import { GameOverOverlay } from './components/GameOverOverlay';
 import { useGameStore } from './store/useGameStore';
 
 export default function App() {
-  const selectedEra = useGameStore((s) => s.selectedEra);
+  const initGame = useGameStore((s) => s.initGame);
 
-  return (
-    <>
-      {selectedEra === null ? <EraSelect /> : <GameBoard />}
-      <GameOverOverlay />
-    </>
-  );
+  useEffect(() => {
+    initGame();
+  }, [initGame]);
+
+  return <GameBoard />;
 }
