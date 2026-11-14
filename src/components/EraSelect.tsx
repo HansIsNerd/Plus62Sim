@@ -64,12 +64,12 @@ export default function EraSelect() {
             type="button"
             onClick={() => onSelect(id)}
             className={`
-              group relative flex min-h-[220px] flex-col justify-between overflow-hidden
+              group relative flex min-h-55 flex-col justify-between overflow-hidden
               rounded-3xl p-6 text-left text-white outline-none
               transition-all duration-200 ease-out
               hover:-translate-y-2 active:translate-y-1
               focus-visible:ring-4 focus-visible:ring-offset-4 focus-visible:ring-offset-navy
-              md:min-h-[380px] md:p-8
+              md:min-h-95 md:p-8
               ${className}
             `}
           >
