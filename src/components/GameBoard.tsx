@@ -13,7 +13,7 @@ interface StatBarProps {
 function StatBar({ label, value, Icon, barClass }: StatBarProps) {
   const pct = Math.max(0, Math.min(100, value));
   return (
-    <div className="flex min-w-37.5 flex-1 items-center gap-3">
+    <div className="flex min-w- flex-1 items-center gap-3">
       <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${barClass}`}>
         <Icon className="h-5 w-5 text-white" strokeWidth={2.5} />
       </div>
