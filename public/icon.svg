@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#2B3576"/>
+  <path d="M-20 160 C 80 100, 160 220, 260 160 S 440 100, 540 170" stroke="#FFFFFF" stroke-opacity="0.2" stroke-width="24" stroke-linecap="round" fill="none"/>
+  <path d="M-20 400 C 80 340, 160 460, 260 400 S 440 340, 540 410" stroke="#FFFFFF" stroke-opacity="0.2" stroke-width="24" stroke-linecap="round" fill="none"/>
+  <text x="256" y="310" font-family="Outfit, Poppins, Arial, sans-serif" font-weight="900" font-size="210" text-anchor="middle" fill="#FFFFFF">+<tspan fill="#F9B23C">62</tspan></text>
+</svg>
