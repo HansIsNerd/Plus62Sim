@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useGameStore } from '../store/useGameStore';
 import { SquigglyPattern } from './SquigglyPattern';
+import EventModal from './EventModal';
 import type { CardColor } from '../data/cards';
 
 interface StatConfig {
@@ -37,9 +38,9 @@ export default function GameBoard() {
   const hand = useGameStore((s) => s.hand);
   const day = useGameStore((s) => s.day);
   const status = useGameStore((s) => s.status);
+  const activeEvent = useGameStore((s) => s.activeEvent);
   const playCard = useGameStore((s) => s.playCard);
   const initGame = useGameStore((s) => s.initGame);
-  const resetGame = useGameStore((s) => s.resetGame);
 
   return (
     <main className="relative flex min-h-screen flex-col bg-navy px-4 py-4 md:px-6">
@@ -84,7 +85,7 @@ export default function GameBoard() {
             <button
               key={card.id}
               type="button"
-              disabled={status !== 'playing'}
+              disabled={status !== 'playing' || activeEvent !== null}
               onClick={() => playCard(card.id)}
               className={`group relative flex min-h-48 flex-col justify-between overflow-hidden rounded-3xl p-6 text-left text-white outline-none transition-all duration-200 ease-out hover:-translate-y-2 active:translate-y-1 disabled:opacity-50 ${CARD_CLASS[card.color]}`}
             >
@@ -135,17 +136,12 @@ export default function GameBoard() {
                 <RotateCcw size={18} strokeWidth={2.5} />
                 Main Lagi
               </button>
-              <button
-                type="button"
-                onClick={resetGame}
-                className="rounded-2xl bg-white/20 px-6 py-3 font-black text-white transition-all hover:bg-white/30"
-              >
-                Pilih Era
-              </button>
             </div>
           </div>
         </div>
       )}
+
+      {activeEvent && <EventModal />}
     </main>
   );
 }
