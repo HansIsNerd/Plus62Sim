@@ -1,57 +1,52 @@
-import { Utensils, Heart, Coins, type LucideIcon } from 'lucide-react';
-import type { Card, CardTag } from '../data/cards';
+import type { Card, CardColor, CardEffects } from '../data/cards';
 
 interface Props {
   card: Card;
   onClick?: () => void;
+  disabled?: boolean;
 }
 
-const TAG_STYLE: Record<CardTag, { bg: string; Icon: LucideIcon }> = {
-  food: { bg: 'bg-sunny', Icon: Utensils },
-  health: { bg: 'bg-coral', Icon: Heart },
-  wealth: { bg: 'bg-teal', Icon: Coins },
+const COLOR_CLASS: Record<CardColor, string> = {
+  coral: 'bg-coral shadow-coral hover:shadow-coral-lg',
+  sunny: 'bg-sunny shadow-sunny hover:shadow-sunny-lg',
+  teal: 'bg-teal shadow-teal hover:shadow-teal-lg',
 };
 
-const LABEL: Record<string, string> = {
-  food: 'Makan',
+const LABEL: Record<keyof CardEffects, string> = {
   health: 'Sehat',
+  food: 'Makan',
   wealth: 'Harta',
+  mental: 'Mental',
 };
 
-function formatEffects(effects: Card['effects']): string {
-  return Object.entries(effects)
+function formatEffects(effects: CardEffects): string {
+  return (Object.entries(effects) as [keyof CardEffects, number | undefined][])
     .filter(([, v]) => typeof v === 'number' && v !== 0)
-    .map(([k, v]) => `${LABEL[k]} ${(v as number) > 0 ? '+' : ''}${v}`)
+    .map(([k, v]) => `${LABEL[k]} ${v! > 0 ? '+' : ''}${v}`)
     .join(' · ');
 }
 
-export default function CardView({ card, onClick }: Props) {
-  const { bg, Icon } = TAG_STYLE[card.tag];
+export default function CardView({ card, onClick, disabled = false }: Props) {
+  const { Icon } = card;
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
       onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onClick?.();
-        }
-      }}
-      className="w-40 h-60 bg-white rounded-3xl overflow-hidden shadow-xl hover:-translate-y-2 transition-transform cursor-pointer flex flex-col select-none"
+      disabled={disabled}
+      className={`relative flex h-60 w-40 select-none flex-col overflow-hidden rounded-3xl bg-white text-left outline-none transition-all duration-200 ease-out hover:-translate-y-2 active:translate-y-1 focus-visible:ring-4 focus-visible:ring-sunny disabled:opacity-50 ${COLOR_CLASS[card.color]}`}
     >
-      <div className={`h-1/2 w-full flex items-center justify-center ${bg}`}>
+      <div className="flex h-1/2 w-full items-center justify-center bg-white/20">
         <Icon className="h-14 w-14 text-white" strokeWidth={2.5} />
       </div>
-      <div className="h-1/2 p-4 flex flex-col justify-center">
-        <h3 className="font-display font-bold text-navy text-lg leading-tight">
-          {card.name}
+      <div className="flex h-1/2 flex-col justify-center bg-white p-4">
+        <h3 className="text-lg font-black leading-tight text-navy">
+          {card.title}
         </h3>
         <p className="mt-1 text-xs font-semibold text-navy/60">
           {formatEffects(card.effects)}
         </p>
       </div>
-    </div>
+    </button>
   );
 }

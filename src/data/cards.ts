@@ -1,23 +1,78 @@
-export type CardTag = 'food' | 'health' | 'wealth';
+import {
+  Drumstick,
+  BedDouble,
+  Hammer,
+  Utensils,
+  Users,
+  Leaf,
+  type LucideIcon,
+} from 'lucide-react';
+
+export type CardColor = 'coral' | 'sunny' | 'teal';
+
+export interface CardEffects {
+  health?: number;
+  food?: number;
+  wealth?: number;
+  mental?: number;
+}
 
 export interface Card {
   id: string;
-  name: string;
-  tag: CardTag;
-  effects: {
-    food?: number;
-    health?: number;
-    wealth?: number;
-  };
+  title: string;
+  description: string;
+  Icon: LucideIcon;
+  color: CardColor;
+  effects: CardEffects;
 }
 
 export const STARTER_DECK: Card[] = [
-  { id: 'makan', name: 'Makan', tag: 'food', effects: { food: 15, wealth: -5 } },
-  { id: 'berburu', name: 'Berburu', tag: 'food', effects: { food: 20, health: -8 } },
-  { id: 'olahraga', name: 'Olahraga', tag: 'health', effects: { health: 12, food: -8 } },
-  { id: 'istirahat', name: 'Istirahat', tag: 'health', effects: { health: 15, food: -5 } },
-  { id: 'obat', name: 'Obat Herbal', tag: 'health', effects: { health: 20, wealth: -10 } },
-  { id: 'kerja', name: 'Kerja', tag: 'wealth', effects: { wealth: 15, health: -6, food: -4 } },
-  { id: 'dagang', name: 'Dagang', tag: 'wealth', effects: { wealth: 20, food: -8 } },
-  { id: 'menabung', name: 'Menabung', tag: 'wealth', effects: { wealth: 10, food: -2 } },
+  {
+    id: 'berburu',
+    title: 'Berburu',
+    description: 'Cari makanan di hutan.',
+    Icon: Drumstick,
+    color: 'coral',
+    effects: { food: 25, health: -10, mental: -5 },
+  },
+  {
+    id: 'istirahat',
+    title: 'Istirahat',
+    description: 'Tidur dan pulihkan pikiran.',
+    Icon: BedDouble,
+    color: 'teal',
+    effects: { health: 10, mental: 20, food: -5 },
+  },
+  {
+    id: 'kerja',
+    title: 'Kerja',
+    description: 'Kumpulkan hasil untuk suku.',
+    Icon: Hammer,
+    color: 'sunny',
+    effects: { wealth: 15, mental: -15, food: -5 },
+  },
+  {
+    id: 'makan',
+    title: 'Makan',
+    description: 'Isi perut dengan hasil buruan.',
+    Icon: Utensils,
+    color: 'coral',
+    effects: { food: 30, wealth: -5 },
+  },
+  {
+    id: 'bersosialisasi',
+    title: 'Bersosialisasi',
+    description: 'Berkumpul di sekitar api unggun.',
+    Icon: Users,
+    color: 'sunny',
+    effects: { mental: 15, wealth: -5 },
+  },
+  {
+    id: 'meramu',
+    title: 'Meramu Herbal',
+    description: 'Racik dedaunan penyembuh.',
+    Icon: Leaf,
+    color: 'teal',
+    effects: { health: 15, mental: 5, food: -5 },
+  },
 ];
