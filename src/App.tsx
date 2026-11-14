@@ -1,5 +1,9 @@
 import EraSelect from './components/EraSelect';
+import GameBoard from './components/GameBoard';
+import { useGameStore } from './store/useGameStore';
 
 export default function App() {
-  return <EraSelect />;
+  const selectedEra = useGameStore((s) => s.selectedEra);
+
+  return selectedEra ? <GameBoard /> : <EraSelect />;
 }
