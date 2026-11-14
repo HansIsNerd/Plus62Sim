@@ -1,0 +1,28 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-coral: #F37A6E;
+  --color-coral-dark: #C9564A;
+  --color-sunny: #F9B23C;
+  --color-sunny-dark: #C98A1E;
+  --color-teal: #71C7A6;
+  --color-teal-dark: #4A9E7E;
+  --color-navy: #2B3576;
+  --color-navy-dark: #1B2352;
+
+  --font-display: 'Outfit', 'Poppins', ui-sans-serif, system-ui, sans-serif;
+
+  /* Shadow tebal flat ala kartu board game */
+  --shadow-coral: 0 8px 0 0 #C9564A;
+  --shadow-coral-lg: 0 14px 0 0 #C9564A;
+  --shadow-sunny: 0 8px 0 0 #C98A1E;
+  --shadow-sunny-lg: 0 14px 0 0 #C98A1E;
+  --shadow-teal: 0 8px 0 0 #4A9E7E;
+  --shadow-teal-lg: 0 14px 0 0 #4A9E7E;
+}
+
+body {
+  font-family: var(--font-display);
+  background-color: var(--color-navy-dark);
+  color: white;
+}
