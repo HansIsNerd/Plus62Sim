@@ -5,18 +5,16 @@ import {
   Utensils,
   Users,
   Leaf,
-  Heart,
-  Briefcase,
   type LucideIcon,
 } from 'lucide-react';
 
 export type CardColor = 'coral' | 'sunny' | 'teal';
-export type CardType = 'action' | 'curse' | 'npc';
+export type CardType = 'action' | 'curse' ;
 
 export interface CardEffects {
   health?: number;
   food?: number;
-  wealth?: number;
+  money?: number;
   mental?: number;
 }
 
@@ -27,13 +25,7 @@ export interface Card {
   Icon: LucideIcon;
   color: CardColor;
   type: CardType;
-  /**
-   * Jika type === 'npc', `effects` adalah efek pasif
-   * yang diterapkan setiap kali pemain memainkan kartu.
-   */
   effects: CardEffects;
-  /** Nama NPC. Jika ada, kartu ini adalah kartu NPC (pasif, tidak dimainkan seperti action). */
-  npcName?: string;
 }
 
 export const STARTER_DECK: Card[] = [
@@ -62,7 +54,7 @@ export const STARTER_DECK: Card[] = [
     Icon: Hammer,
     color: 'sunny',
     type: 'action',
-    effects: { wealth: 15, mental: -15, food: -5 },
+    effects: { money: 15, mental: -15, food: -5 },
   },
   {
     id: 'makan',
@@ -71,7 +63,7 @@ export const STARTER_DECK: Card[] = [
     Icon: Utensils,
     color: 'coral',
     type: 'action',
-    effects: { food: 30, wealth: -5 },
+    effects: { food: 30, money: -5 },
   },
   {
     id: 'bersosialisasi',
@@ -80,7 +72,7 @@ export const STARTER_DECK: Card[] = [
     Icon: Users,
     color: 'sunny',
     type: 'action',
-    effects: { mental: 15, wealth: -5 },
+    effects: { mental: 15, money: -5 },
   },
   {
     id: 'Jamu Herbal',
@@ -90,30 +82,5 @@ export const STARTER_DECK: Card[] = [
     color: 'teal',
     type: 'action',
     effects: { health: 15, mental: 5, food: -5 },
-  },
-];
-
-// Kartu NPC: efek pasif tiap pemain memainkan kartu.
-// Sengaja dipisah dari STARTER_DECK agar tidak ikut ditarik ke tangan sebagai kartu action.
-export const NPC_CARDS: Card[] = [
-  {
-    id: 'npc-ibu',
-    title: 'Ibu',
-    description: 'Doa dan masakan Ibu selalu menenangkan.',
-    Icon: Heart,
-    color: 'teal',
-    type: 'npc',
-    npcName: 'Ibu',
-    effects: { mental: 5 },
-  },
-  {
-    id: 'npc-bos',
-    title: 'Bos',
-    description: 'Gaji mengalir, tapi tekanan tak pernah berhenti.',
-    Icon: Briefcase,
-    color: 'sunny',
-    type: 'npc',
-    npcName: 'Bos',
-    effects: { wealth: 5, mental: -2 },
   },
 ];

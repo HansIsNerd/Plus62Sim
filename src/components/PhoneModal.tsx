@@ -1,16 +1,258 @@
-import { Landmark, X, Coins, TrendingDown } from 'lucide-react';
-import { useGameStore } from '../store/useGameStore';
+import { useState } from 'react';
+import {
+  Landmark,
+  X,
+  Coins,
+  TrendingDown,
+  ChevronLeft,
+  Users,
+  MessageCircle,
+  UserPlus,
+  Search,
+  type LucideIcon,
+} from 'lucide-react';
+import {
+  useGameStore,
+  CHAT_MENTAL_GAIN,
+  CHAT_MONEY_COST,
+  type PhoneApp,
+} from '../store/useGameStore';
+import { NPC_POOL, type NPC } from '../data/npcs';
 
 const AMOUNT = 50;
 
-export default function PhoneModal() {
-  const wealth = useGameStore((s) => s.stats.wealth);
+const APP_TITLE: Record<PhoneApp, string> = {
+  home: 'Plus62 OS',
+  bank: 'Bank Plus62',
+  social: 'Sosmed',
+  contacts: 'Kontak',
+};
+
+interface HomeApp {
+  key: Exclude<PhoneApp, 'home'>;
+  label: string;
+  Icon: LucideIcon;
+  bg: string;
+  shadow: string;
+}
+
+const HOME_APPS: HomeApp[] = [
+  { key: 'bank', label: 'Bank', Icon: Landmark, bg: 'bg-sunny', shadow: 'shadow-sunny' },
+  { key: 'social', label: 'Sosmed', Icon: Users, bg: 'bg-coral', shadow: 'shadow-coral' },
+  { key: 'contacts', label: 'Kontak', Icon: MessageCircle, bg: 'bg-teal', shadow: 'shadow-teal' },
+];
+
+const randomNpc = (exclude: string[] = []): NPC | null => {
+  const candidates = NPC_POOL.filter((n) => !exclude.includes(n.id));
+  if (candidates.length === 0) return null;
+  return candidates[Math.floor(Math.random() * candidates.length)];
+};
+
+function HomeScreen() {
+  const setActiveApp = useGameStore((s) => s.setActiveApp);
+
+  return (
+    <div className="grid grid-cols-3 gap-4 p-5">
+      {HOME_APPS.map(({ key, label, Icon, bg, shadow }) => (
+        <button
+          key={key}
+          type="button"
+          onClick={() => setActiveApp(key)}
+          className="flex flex-col items-center gap-2 outline-none focus-visible:ring-4 focus-visible:ring-sunny rounded-2xl"
+        >
+          <span
+            className={`flex h-16 w-16 items-center justify-center rounded-2xl text-white transition-all active:translate-y-1 active:shadow-none ${bg} ${shadow}`}
+          >
+            <Icon size={30} strokeWidth={2.5} />
+          </span>
+          <span className="text-[11px] font-bold text-navy">{label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function BankApp() {
+  const money = useGameStore((s) => s.stats.money);
   const debt = useGameStore((s) => s.debt);
-  const togglePhone = useGameStore((s) => s.togglePhone);
   const borrowMoney = useGameStore((s) => s.borrowMoney);
   const payDebt = useGameStore((s) => s.payDebt);
 
-  const canPay = wealth >= AMOUNT && debt > 0;
+  const canPay = money >= AMOUNT && debt > 0;
+
+  return (
+    <div className="flex flex-1 flex-col gap-3 p-4">
+      <div className="rounded-2xl bg-white p-4 shadow-sm">
+        <div className="flex items-center gap-2 text-navy/60">
+          <Coins size={14} strokeWidth={2.5} />
+          <span className="text-[10px] font-bold uppercase">money</span>
+        </div>
+        <p className="mt-1 text-3xl font-black text-navy">{money}</p>
+      </div>
+
+      <div className="rounded-2xl bg-white p-4 shadow-sm">
+        <div className="flex items-center gap-2 text-coral-dark">
+          <TrendingDown size={14} strokeWidth={2.5} />
+          <span className="text-[10px] font-bold uppercase">Debt</span>
+        </div>
+        <p className="mt-1 text-3xl font-black text-coral-dark">
+          {Math.round(debt)}
+        </p>
+        <p className="mt-1 text-[10px] font-semibold text-navy/50">
+          Bunga 20% per pinjaman. Utang membuat mental turun tiap hari.
+        </p>
+      </div>
+
+      <div className="mt-auto flex flex-col gap-3 pb-2">
+        <button
+          type="button"
+          onClick={() => borrowMoney(AMOUNT)}
+          className="w-full rounded-2xl bg-coral px-4 py-3 text-base font-black text-white shadow-coral outline-none transition-all active:translate-y-1 active:shadow-none focus-visible:ring-4 focus-visible:ring-sunny"
+        >
+          Pinjam {AMOUNT}
+        </button>
+        <button
+          type="button"
+          onClick={() => payDebt(AMOUNT)}
+          disabled={!canPay}
+          className="w-full rounded-2xl bg-teal px-4 py-3 text-base font-black text-white shadow-teal outline-none transition-all active:translate-y-1 active:shadow-none focus-visible:ring-4 focus-visible:ring-sunny disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Bayar {AMOUNT}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SocialApp() {
+  const friends = useGameStore((s) => s.friends);
+  const addFriend = useGameStore((s) => s.addFriend);
+
+  const [npc, setNpc] = useState<NPC | null>(() =>
+    randomNpc(friends.map((f) => f.id)),
+  );
+
+  const handleAdd = () => {
+    if (!npc) return;
+    addFriend(npc);
+    setNpc(randomNpc([...friends.map((f) => f.id), npc.id]));
+  };
+
+  const handleShuffle = () => {
+    setNpc(randomNpc(friends.map((f) => f.id)));
+  };
+
+  if (!npc) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
+        <Users size={40} strokeWidth={2.5} className="text-navy/30" />
+        <p className="text-sm font-bold text-navy/60">
+          Semua orang sudah jadi temanmu.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-1 flex-col gap-3 p-4">
+      <p className="text-[10px] font-bold uppercase text-navy/50">
+        Orang yang mungkin kamu kenal
+      </p>
+      <div className="rounded-2xl bg-white p-5 text-center shadow-sm">
+        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-coral text-3xl font-black text-white">
+          {npc.name.charAt(0)}
+        </div>
+        <h3 className="mt-3 text-2xl font-black text-navy">{npc.name}</h3>
+        <span className="mt-1 inline-block rounded-full bg-navy/10 px-3 py-0.5 text-[10px] font-bold uppercase text-navy">
+          {npc.role}
+        </span>
+        <p className="mt-3 text-xs font-semibold text-navy/60">
+          {npc.buffText}
+        </p>
+      </div>
+
+      <div className="mt-auto flex flex-col gap-3 pb-2">
+        <button
+          type="button"
+          onClick={handleAdd}
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-teal px-4 py-3 text-base font-black text-white shadow-teal outline-none transition-all active:translate-y-1 active:shadow-none focus-visible:ring-4 focus-visible:ring-sunny"
+        >
+          <UserPlus size={18} strokeWidth={2.5} />
+          Add Friend
+        </button>
+        <button
+          type="button"
+          onClick={handleShuffle}
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-navy/10 px-4 py-3 text-sm font-black text-navy outline-none transition-colors hover:bg-navy/20 focus-visible:ring-4 focus-visible:ring-sunny"
+        >
+          <Search size={16} strokeWidth={2.5} />
+          Cari Lagi
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ContactsApp() {
+  const friends = useGameStore((s) => s.friends);
+  const money = useGameStore((s) => s.stats.money);
+  const chatWithFriend = useGameStore((s) => s.chatWithFriend);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const canChat = money >= CHAT_MONEY_COST;
+
+  const handleChat = (id: string, name: string) => {
+    const ok = chatWithFriend(id);
+    setNotice(
+      ok
+        ? `Chat dengan ${name}: Mental +${CHAT_MENTAL_GAIN}, money -${CHAT_MONEY_COST}`
+        : `Uang tidak cukup untuk chat (butuh ${CHAT_MONEY_COST}).`,
+    );
+  };
+
+  return (
+    <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-4">
+      {friends.map((f) => (
+        <div
+          key={f.id}
+          className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-sm"
+        >
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-sunny text-lg font-black text-white">
+            {f.name.charAt(0)}
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate text-sm font-black text-navy">{f.name}</h3>
+            <p className="truncate text-[10px] font-bold uppercase text-navy/50">
+              {f.role}
+            </p>
+            <p className="truncate text-[10px] font-semibold text-navy/60">
+              {f.buffText}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleChat(f.id, f.name)}
+            disabled={!canChat}
+            className="shrink-0 rounded-xl bg-teal px-3 py-2 text-xs font-black text-white outline-none transition-all active:translate-y-0.5 focus-visible:ring-4 focus-visible:ring-sunny disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Chat
+          </button>
+        </div>
+      ))}
+
+      {notice && (
+        <p className="mt-1 rounded-xl bg-navy/10 px-3 py-2 text-[11px] font-bold text-navy">
+          {notice}
+        </p>
+      )}
+    </div>
+  );
+}
+
+export default function PhoneModal() {
+  const activeApp = useGameStore((s) => s.activeApp);
+  const setActiveApp = useGameStore((s) => s.setActiveApp);
+  const togglePhone = useGameStore((s) => s.togglePhone);
 
   return (
     <div
@@ -20,10 +262,23 @@ export default function PhoneModal() {
     >
       <div className="w-[320px] h-150 bg-black rounded-[40px] p-3 shadow-2xl border-4 border-gray-700 relative">
         <div className="w-full h-full bg-gray-100 rounded-[30px] overflow-hidden flex flex-col relative">
-          <header className="flex items-center justify-between bg-white px-5 pb-3 pt-6 shadow-sm">
+          <header className="flex items-center justify-between bg-white px-4 pb-3 pt-6 shadow-sm">
             <div className="flex items-center gap-2 text-navy">
-              <Landmark size={22} strokeWidth={2.5} />
-              <h2 className="text-lg font-black tracking-tight">Bank Plus62</h2>
+              {activeApp !== 'home' ? (
+                <button
+                  type="button"
+                  onClick={() => setActiveApp('home')}
+                  aria-label="Kembali"
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-navy/10 text-navy outline-none transition-colors hover:bg-navy/20 focus-visible:ring-4 focus-visible:ring-sunny"
+                >
+                  <ChevronLeft size={18} strokeWidth={2.5} />
+                </button>
+              ) : (
+                <span className="h-8 w-8" aria-hidden="true" />
+              )}
+              <h2 className="text-lg font-black tracking-tight">
+                {APP_TITLE[activeApp]}
+              </h2>
             </div>
             <button
               type="button"
@@ -35,51 +290,11 @@ export default function PhoneModal() {
             </button>
           </header>
 
-          <div className="flex flex-1 flex-col gap-3 p-4">
-            <div className="rounded-2xl bg-white p-4 shadow-sm">
-              <div className="flex items-center gap-2 text-navy/60">
-                <Coins size={14} strokeWidth={2.5} />
-                <span className="text-[10px] font-bold uppercase">
-                  Uang (Wealth)
-                </span>
-              </div>
-              <p className="mt-1 text-3xl font-black text-navy">
-                Rp {wealth}
-              </p>
-            </div>
-
-            <div className="rounded-2xl bg-white p-4 shadow-sm">
-              <div className="flex items-center gap-2 text-coral-dark">
-                <TrendingDown size={14} strokeWidth={2.5} />
-                <span className="text-[10px] font-bold uppercase">
-                  Utang (Debt)
-                </span>
-              </div>
-              <p className="mt-1 text-3xl font-black text-coral-dark">
-                Rp {Math.round(debt)}
-              </p>
-              <p className="mt-1 text-[10px] font-semibold text-navy/50">
-                Bunga 20% per pinjaman. Utang membuat mental turun tiap hari.
-              </p>
-            </div>
-
-            <div className="mt-auto flex flex-col gap-3 pb-2">
-              <button
-                type="button"
-                onClick={() => borrowMoney(AMOUNT)}
-                className="w-full rounded-2xl bg-coral px-4 py-3 text-base font-black text-white shadow-coral outline-none transition-all active:translate-y-1 active:shadow-none focus-visible:ring-4 focus-visible:ring-sunny"
-              >
-                Pinjam Rp {AMOUNT}
-              </button>
-              <button
-                type="button"
-                onClick={() => payDebt(AMOUNT)}
-                disabled={!canPay}
-                className="w-full rounded-2xl bg-teal px-4 py-3 text-base font-black text-white shadow-teal outline-none transition-all active:translate-y-1 active:shadow-none focus-visible:ring-4 focus-visible:ring-sunny disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Bayar Rp {AMOUNT}
-              </button>
-            </div>
+          <div className="flex flex-1 flex-col overflow-hidden">
+            {activeApp === 'home' && <HomeScreen />}
+            {activeApp === 'bank' && <BankApp />}
+            {activeApp === 'social' && <SocialApp />}
+            {activeApp === 'contacts' && <ContactsApp />}
           </div>
         </div>
       </div>

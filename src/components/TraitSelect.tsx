@@ -3,12 +3,12 @@ import { TRAITS } from '../data/traits';
 import { useGameStore } from '../store/useGameStore';
 import { SquigglyPattern } from './SquigglyPattern';
 
-type StatKey = 'health' | 'food' | 'wealth' | 'mental';
+type StatKey = 'health' | 'food' | 'money' | 'mental';
 
 const STAT_META: { key: StatKey; label: string; Icon: LucideIcon }[] = [
   { key: 'health', label: 'Health', Icon: Heart },
   { key: 'food', label: 'Food', Icon: Utensils },
-  { key: 'wealth', label: 'Wealth', Icon: Coins },
+  { key: 'money', label: 'money', Icon: Coins },
   { key: 'mental', label: 'Mental', Icon: Brain },
 ];
 

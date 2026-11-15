@@ -15,7 +15,7 @@ const COLOR_CLASS: Record<CardColor, string> = {
 const LABEL: Record<keyof CardEffects, string> = {
   health: 'Sehat',
   food: 'Makan',
-  wealth: 'Harta',
+  money: 'Uang',
   mental: 'Mental',
 };
 

@@ -4,7 +4,6 @@ import { useGameStore } from '../store/useGameStore';
 export default function EndModal() {
   const status = useGameStore((s) => s.status);
   const day = useGameStore((s) => s.day);
-  const maxDays = useGameStore((s) => s.maxDays);
   const initGame = useGameStore((s) => s.initGame);
 
   if (status !== 'won' && status !== 'lost') return null;
@@ -29,8 +28,8 @@ export default function EndModal() {
         </h2>
         <p className="mt-2 text-base font-semibold text-white/85">
           {won
-            ? `Kamu bertahan sampai hari ke-${maxDays}.`
-            : `Kamu bertahan selama ${day - 1} hari.`}
+            ? `Kamu bertahan selama ${day - 1} hari.`
+            : `Kamu kalah setelah ${day - 1} hari.`}
         </p>
         <div className="mt-6">
           <button

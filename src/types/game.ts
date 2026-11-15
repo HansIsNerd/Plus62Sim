@@ -4,7 +4,7 @@ export type CardColor = 'coral' | 'sunny' | 'teal';
 export interface Effects {
   food: number;
   health: number;
-  wealth: number;
+  money: number;
 }
 
 export interface CardData {

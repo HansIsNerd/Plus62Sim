@@ -33,5 +33,3 @@ export interface Card extends CardDef {
   /** ID unik per instance kartu di deck */
   id: string;
 }
-
-export type GameSpeed = 0.5 | 1 | 2;
