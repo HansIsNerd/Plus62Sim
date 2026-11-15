@@ -9,13 +9,14 @@ import {
   Crown,
   BookOpen,
   Gamepad2,
+  GraduationCap,
   type LucideIcon,
 } from 'lucide-react';
 
 export type CardColor = 'coral' | 'sunny' | 'teal';
 export type CardType = 'action' | 'curse';
 export type CardTag = 'work' | 'food' | 'rest' | 'social' | 'health' | 'study' | 'play';
-export type LifeStage = 'child' | 'teen' | 'adult';
+export type LifeStage = 'child' | 'teen' | 'college' | 'adult';
 
 export interface CardEffects {
   health?: number;
@@ -32,8 +33,10 @@ export interface Card {
   color: CardColor;
   type: CardType;
   tag?: CardTag;
-  stage?: LifeStage[];
+  stage?: ('child' | 'teen' | 'college' | 'adult')[];
   effects: CardEffects;
+  /** Jika true, efek dihitung dinamis oleh store berdasarkan karir pemain */
+  isDynamicWork?: boolean;
 }
 
 export const KERJA_KERAS_CARD: Card = {
@@ -84,6 +87,28 @@ export const STARTER_DECK: Card[] = [
     effects: { mental: 20, health: 5, food: -10 },
   },
   {
+    id: 'belajar_ujian',
+    title: 'Belajar Ujian',
+    description: 'Begadang demi nilai IPK yang aman.',
+    Icon: GraduationCap,
+    color: 'sunny',
+    type: 'action',
+    tag: 'study',
+    stage: ['college'],
+    effects: { mental: -15, food: -5, money: 0 },
+  },
+  {
+    id: 'main_game',
+    title: 'Main Game',
+    description: 'Push rank dulu, tugas belakangan.',
+    Icon: Gamepad2,
+    color: 'coral',
+    type: 'action',
+    tag: 'play',
+    stage: ['college'],
+    effects: { mental: 20, money: -10 },
+  },
+  {
     id: 'berburu',
     title: 'Berburu',
     description: 'Cari makanan di hutan.',
@@ -102,19 +127,20 @@ export const STARTER_DECK: Card[] = [
     color: 'teal',
     type: 'action',
     tag: 'rest',
-    stage: ['child', 'teen', 'adult'],
+    stage: ['child', 'teen', 'college', 'adult'],
     effects: { health: 10, mental: 20, food: -5 },
   },
   {
     id: 'kerja',
     title: 'Kerja',
-    description: 'Kumpulkan hasil untuk suku.',
+    description: 'Gaji dan beban mental sesuai karirmu.',
     Icon: Hammer,
     color: 'sunny',
     type: 'action',
     tag: 'work',
     stage: ['adult'],
-    effects: { money: 15, mental: -15, food: -5 },
+    effects: {},
+    isDynamicWork: true,
   },
   {
     id: 'makan',
@@ -124,7 +150,7 @@ export const STARTER_DECK: Card[] = [
     color: 'coral',
     type: 'action',
     tag: 'food',
-    stage: ['child', 'teen', 'adult'],
+    stage: ['child', 'teen', 'college', 'adult'],
     effects: { food: 30, money: -5 },
   },
   {
@@ -135,18 +161,18 @@ export const STARTER_DECK: Card[] = [
     color: 'sunny',
     type: 'action',
     tag: 'social',
-    stage: ['child', 'teen', 'adult'],
+    stage: ['child', 'teen', 'college', 'adult'],
     effects: { mental: 15, money: -5 },
   },
   {
-    id: 'Jamu Herbal',
+    id: 'jamu_herbal',
     title: 'Minum Jamu Racikan Herbal',
     description: 'Racik dedaunan penyembuh.',
     Icon: Leaf,
     color: 'teal',
     type: 'action',
     tag: 'health',
-    stage: ['child', 'teen', 'adult'],
+    stage: ['child', 'teen', 'college', 'adult'],
     effects: { health: 15, mental: 5, food: -5 },
   },
 ];

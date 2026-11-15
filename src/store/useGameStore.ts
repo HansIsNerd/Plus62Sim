@@ -12,9 +12,11 @@ import {
 } from '../data/events';
 import { TRAITS, type Trait } from '../data/traits';
 import { IBU_NPC, type NPC } from '../data/npcs';
+import { CAREERS_POOL, type Career } from '../data/careers';
 
 export type GameStatus = 'idle' | 'playing' | 'won' | 'lost';
 export type PhoneApp = 'home' | 'bank' | 'contacts' | 'social';
+export type PathChoice = 'none' | 'kuliah' | 'kerja';
 
 export type Message = {
   id: string;
@@ -40,6 +42,8 @@ interface GameState {
   discard: Card[];
   activeEvent: GameEvent | null;
   activeTrait: Trait | null;
+  career: Career | null;
+  pathChoice: PathChoice;
   isPhoneOpen: boolean;
   debt: number;
   friends: NPC[];
@@ -48,6 +52,8 @@ interface GameState {
   chatHistories: Record<string, Message[]>;
   initGame: () => void;
   selectTrait: (traitId: string) => void;
+  selectCareer: (careerId: string) => void;
+  choosePath: (path: Exclude<PathChoice, 'none'>) => void;
   reset: () => void;
   playCard: (cardId: string) => void;
   resolveEvent: (choiceIndex: number) => void;
@@ -63,6 +69,12 @@ interface GameState {
 export const START_AGE = 6;
 export const MAX_AP = 3;
 export const WIN_AGE = 30;
+/** Umur pemain wajib memilih jalan hidup (Kuliah / Kerja) */
+export const PATH_AGE = 19;
+/** Umur minimum kartu "Kerja" */
+export const CAREER_AGE = 18;
+/** Tagihan muncul tiap N tahun setelah pemain mandiri */
+const BILL_AGE_INTERVAL = 2;
 /** Alias kompatibilitas untuk komponen lama yang masih meng-import WIN_DAY */
 export const WIN_DAY = WIN_AGE;
 
@@ -70,7 +82,6 @@ const MAX_QUEUE = 3;
 const HAND_SIZE = 3;
 const DAILY_FOOD_DECAY = 3;
 const EVENT_CHANCE = 0.3;
-const BILL_AGE_INTERVAL = 10;
 
 // Bunga pinjaman dan stres akibat utang
 const DEBT_INTEREST = 0.2;
@@ -134,15 +145,16 @@ const clampMoney = (n: number) => Math.max(0, n);
 
 const isDead = (s: Stats) => s.mental <= 0 || s.health <= 0 || s.food <= 0;
 
-// < 15 = child, 15-18 = teen, > 18 = adult
-const getStage = (age: number): LifeStage => {
+// < 15 = child, 15-18 = teen, >= 19: college (jika kuliah) / adult
+const getStage = (age: number, path: PathChoice): LifeStage => {
   if (age < 15) return 'child';
-  if (age <= 18) return 'teen';
+  if (age < PATH_AGE) return 'teen';
+  if (path === 'kuliah') return 'college';
   return 'adult';
 };
 
-const drawHand = (deck: Card[], age: number): Card[] => {
-  const stage = getStage(age);
+const drawHand = (deck: Card[], age: number, path: PathChoice): Card[] => {
+  const stage = getStage(age, path);
   const eligible = deck.filter((c) => !c.stage || c.stage.includes(stage));
   const pool = eligible.length > 0 ? [...eligible] : [...deck];
   const hand: Card[] = [];
@@ -176,6 +188,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   discard: [],
   activeEvent: null,
   activeTrait: null,
+  career: null,
+  pathChoice: 'none',
   isPhoneOpen: false,
   debt: 0,
   friends: defaultFriends(),
@@ -191,10 +205,12 @@ export const useGameStore = create<GameState>((set, get) => ({
       actionPoints: MAX_AP,
       stats: statsFromTrait(get().activeTrait),
       deck,
-      hand: drawHand(deck, START_AGE),
+      hand: drawHand(deck, START_AGE, 'none'),
       queue: [],
       discard: [],
       activeEvent: null,
+      career: null,
+      pathChoice: 'none',
       isPhoneOpen: false,
       debt: 0,
       friends: defaultFriends(),
@@ -211,6 +227,44 @@ export const useGameStore = create<GameState>((set, get) => ({
     get().initGame();
   },
 
+  selectCareer: (careerId) => {
+    const { status, career, pathChoice, deck, age } = get();
+    if (status !== 'playing' || career) return;
+    if (pathChoice !== 'kerja') return;
+    const picked = CAREERS_POOL.find((c) => c.id === careerId);
+    if (!picked) return;
+    set({
+      career: picked,
+      hand: drawHand(deck, age, pathChoice),
+    });
+  },
+
+  choosePath: (path) => {
+    const { status, pathChoice, age, deck } = get();
+    if (status !== 'playing' || pathChoice !== 'none') return;
+    if (age < PATH_AGE) return;
+
+    if (path === 'kuliah') {
+      const collegeDeck = STARTER_DECK.filter((c) =>
+        c.stage?.includes('college'),
+      );
+      set({
+        pathChoice: 'kuliah',
+        deck: collegeDeck,
+        hand: drawHand(collegeDeck, age, 'kuliah'),
+        activeEvent: null,
+      });
+      return;
+    }
+
+    // 'kerja': CareerModal muncul karena career masih null
+    set({
+      pathChoice: 'kerja',
+      hand: drawHand(deck, age, 'kerja'),
+      activeEvent: null,
+    });
+  },
+
   reset: () => {
     set({
       status: 'idle',
@@ -223,6 +277,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       discard: [],
       activeEvent: null,
       activeTrait: null,
+      career: null,
+      pathChoice: 'none',
       isPhoneOpen: false,
       debt: 0,
       friends: defaultFriends(),
@@ -340,15 +396,29 @@ export const useGameStore = create<GameState>((set, get) => ({
       status,
       activeEvent,
       debt,
+      career,
+      pathChoice,
     } = get();
 
     if (status !== 'playing' || activeEvent) return;
     if (actionPoints <= 0) return;
+    // Umur 19 tanpa pilihan jalan: modal jalan hidup wajib muncul dulu
+    if (age >= PATH_AGE && pathChoice === 'none') return;
+    // Jalur kerja tanpa karir: modal karir wajib muncul dulu
+    if (pathChoice === 'kerja' && career === null) return;
 
     const card = hand.find((c) => c.id === cardId);
     if (!card) return;
 
-    const effects: CardEffects = card.effects;
+    // Kartu "Kerja" hanya untuk pemain di jalur kerja
+    if (card.isDynamicWork && (pathChoice !== 'kerja' || age < CAREER_AGE)) {
+      return;
+    }
+
+    const effects: CardEffects =
+      card.isDynamicWork && career
+        ? { money: career.salary, mental: career.mentalCost }
+        : card.effects;
     const penalty = card.type === 'curse' ? CURSE_PENALTY : null;
     const debtStress = debt > 0 ? DEBT_MENTAL_PENALTY : 0;
 
@@ -382,10 +452,17 @@ export const useGameStore = create<GameState>((set, get) => ({
     const nextAP = agedUp ? MAX_AP : apAfter;
     const won = !lost && nextAge >= WIN_AGE;
 
+    // Umur 19 tanpa pilihan: tahan event acak agar modal jalan hidup muncul
+    const awaitingPath = nextAge >= PATH_AGE && pathChoice === 'none';
+
     let event: GameEvent | null = null;
-    if (!lost && !won) {
-      if (agedUp && nextAge % BILL_AGE_INTERVAL === 0) {
-        // Umur 10, 20: tagihan wajib
+    if (!lost && !won && !awaitingPath) {
+      if (
+        agedUp &&
+        pathChoice !== 'none' &&
+        nextAge % BILL_AGE_INTERVAL === 0
+      ) {
+        // Sudah mandiri: tagihan tiap 2 tahun
         event = BILL_EVENT;
       } else if (Math.random() < EVENT_CHANCE) {
         event = EVENTS_POOL[Math.floor(Math.random() * EVENTS_POOL.length)];
@@ -397,10 +474,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       age: nextAge,
       actionPoints: nextAP,
       queue: [...queue, card].slice(-MAX_QUEUE),
-      hand: drawHand(deck, nextAge),
+      hand: drawHand(deck, nextAge, pathChoice),
       status: lost ? 'lost' : won ? 'won' : 'playing',
       activeEvent: event,
-      isPhoneOpen: lost || won ? false : get().isPhoneOpen,
+      isPhoneOpen: lost || won || awaitingPath ? false : get().isPhoneOpen,
     });
   },
 
@@ -430,3 +507,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
   },
 }));
+// Buka akses store ke console browser untuk debugging
+if (typeof window !== 'undefined') {
+  (window as any).gameStore = useGameStore;
+}
