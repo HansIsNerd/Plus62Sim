@@ -16,11 +16,13 @@ import {
 } from 'lucide-react';
 import { useGameStore, MAX_AP, PATH_AGE } from '../store/useGameStore';
 import { SquigglyPattern } from './SquigglyPattern';
+import { PlayerAvatar } from './PlayerAvatar';
 import EventModal from './EventModal';
 import PhoneModal from './PhoneModal';
 import PathModal from './PathModal';
 import CareerModal from './CareerModal';
 import MajorModal from './MajorModal';
+import ProfileModal from './ProfileModal';
 import type { CardColor } from '../data/cards';
 
 interface StatConfig {
@@ -71,10 +73,13 @@ export default function GameBoard() {
   const pathChoice = useGameStore((s) => s.pathChoice);
   const deathReason = useGameStore((s) => s.deathReason);
   const isPhoneOpen = useGameStore((s) => s.isPhoneOpen);
+  const isProfileOpen = useGameStore((s) => s.isProfileOpen);
+  const playerName = useGameStore((s) => s.playerName);
   const debt = useGameStore((s) => s.debt);
   const logs = useGameStore((s) => s.logs);
   const playCard = useGameStore((s) => s.playCard);
   const togglePhone = useGameStore((s) => s.togglePhone);
+  const toggleProfile = useGameStore((s) => s.toggleProfile);
   const reset = useGameStore((s) => s.reset);
 
   const [showTraitInfo, setShowTraitInfo] = useState(false);
@@ -113,11 +118,19 @@ export default function GameBoard() {
     !showPath &&
     !showCareer &&
     !showMajor;
+  const showProfile =
+    status === 'playing' &&
+    isProfileOpen &&
+    !showEvent &&
+    !showPath &&
+    !showCareer &&
+    !showMajor;
 
   const locked =
     status !== 'playing' ||
     showEvent ||
     isPhoneOpen ||
+    isProfileOpen ||
     actionPoints <= 0 ||
     blockedByChoice;
 
@@ -140,27 +153,48 @@ export default function GameBoard() {
     <main className="relative flex min-h-screen flex-col bg-navy px-4 py-4 md:px-6">
       <header className="mx-auto w-full max-w-5xl">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h1 className="text-lg font-black tracking-tight">
-            Plus<span className="text-sunny">62</span>Sim
-            {activeTrait && (
-              <span
-                role="button"
-                tabIndex={0}
-                aria-label="Lihat info trait"
-                onClick={() => setShowTraitInfo(true)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    setShowTraitInfo(true);
-                  }
-                }}
-                className="ml-2 inline-flex cursor-pointer items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold uppercase outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-sunny"
-              >
-                {activeTrait.name}
-                <Info size={12} />
-              </span>
-            )}
-          </h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <div
+              role="button"
+              tabIndex={0}
+              aria-label="Buka profil"
+              onClick={toggleProfile}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  toggleProfile();
+                }
+              }}
+              className="flex items-center gap-2 cursor-pointer rounded-full outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-sunny"
+            >
+              <div className="w-8 h-8 rounded-full bg-sunny overflow-hidden border-2 border-white">
+                <PlayerAvatar variant="head" />
+              </div>
+              <span className="font-bold text-white text-sm">{playerName}</span>
+            </div>
+
+            <h1 className="text-lg font-black tracking-tight">
+              Plus<span className="text-sunny">62</span>Sim
+              {activeTrait && (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Lihat info trait"
+                  onClick={() => setShowTraitInfo(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setShowTraitInfo(true);
+                    }
+                  }}
+                  className="ml-2 inline-flex cursor-pointer items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold uppercase outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-sunny"
+                >
+                  {activeTrait.name}
+                  <Info size={12} />
+                </span>
+              )}
+            </h1>
+          </div>
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-xs font-bold text-white/70">
               UMUR: {age} THN
@@ -388,7 +422,7 @@ export default function GameBoard() {
             </h2>
 
             <p className="mt-4 text-lg font-bold text-navy">
-              Kamu hidup sampai umur {age} tahun.
+              {playerName} hidup sampai umur {age} tahun.
             </p>
 
             <p className="mt-2 text-base font-semibold text-navy/70">
@@ -411,6 +445,8 @@ export default function GameBoard() {
           </div>
         </div>
       )}
+
+      {showProfile && <ProfileModal />}
     </main>
   );
 }
