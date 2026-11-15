@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Coins, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 import { ASSETS, type AssetRisk } from '../data/investments';
 import { useGameStore } from '../store/useGameStore';
@@ -8,10 +9,91 @@ const RISK_META: Record<AssetRisk, { label: string; className: string }> = {
   extreme: { label: 'Ekstrem', className: 'bg-coral/20 text-coral-dark' },
 };
 
+const SPARK_W = 96;
+const SPARK_H = 40;
+const SPARK_PAD = 4;
+
+interface SparklineProps {
+  data: number[];
+}
+
+function Sparkline({ data }: SparklineProps) {
+  const [drawn, setDrawn] = useState(true);
+  const dataKey = data.join(',');
+
+  // Setiap data berubah: garis "digambar ulang" dari awal
+  useEffect(() => {
+    setDrawn(false);
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => setDrawn(true));
+    });
+    return () => cancelAnimationFrame(id);
+  }, [dataKey]);
+
+  if (data.length < 2) {
+    return <div className="h-10 w-24 shrink-0" aria-hidden="true" />;
+  }
+
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min;
+  const innerW = SPARK_W - SPARK_PAD * 2;
+  const innerH = SPARK_H - SPARK_PAD * 2;
+
+  const coords = data.map((value, i) => {
+    const x = SPARK_PAD + (i / (data.length - 1)) * innerW;
+    const y =
+      range === 0
+        ? SPARK_H / 2
+        : SPARK_PAD + innerH - ((value - min) / range) * innerH;
+    return { x, y };
+  });
+
+  const points = coords
+    .map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`)
+    .join(' ');
+  const last = coords[coords.length - 1];
+  const up = data[data.length - 1] > data[0];
+  const strokeClass = up ? 'stroke-teal' : 'stroke-coral';
+  const fillClass = up ? 'fill-teal' : 'fill-coral';
+
+  return (
+    <svg
+      viewBox={`0 0 ${SPARK_W} ${SPARK_H}`}
+      className="h-10 w-24 shrink-0"
+      role="img"
+      aria-label={up ? 'Tren naik' : 'Tren turun'}
+      fill="none"
+    >
+      <polyline
+        points={points}
+        pathLength={1}
+        strokeWidth={2.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeDasharray={1}
+        strokeDashoffset={drawn ? 0 : 1}
+        className={`${strokeClass} ${
+          drawn ? 'transition-all duration-500' : 'transition-none'
+        }`}
+      />
+      <circle
+        cx={last.x}
+        cy={last.y}
+        r={3}
+        className={`${fillClass} transition-all duration-500 ${
+          drawn ? 'opacity-100' : 'opacity-0'
+        }`}
+      />
+    </svg>
+  );
+}
+
 export default function InvestApp() {
   const money = useGameStore((s) => s.stats.money);
   const assetPrices = useGameStore((s) => s.assetPrices);
   const portfolio = useGameStore((s) => s.portfolio);
+  const priceHistory = useGameStore((s) => s.priceHistory);
   const buyAsset = useGameStore((s) => s.buyAsset);
   const sellAsset = useGameStore((s) => s.sellAsset);
 
@@ -80,9 +162,12 @@ export default function InvestApp() {
               </div>
             </div>
 
-            <p className="mt-2 text-xs font-bold text-navy/60">
-              Kepemilikan: {owned} unit
-            </p>
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <p className="text-xs font-bold text-navy/60">
+                Kepemilikan: {owned} unit
+              </p>
+              <Sparkline data={priceHistory[asset.id] || []} />
+            </div>
 
             <div className="mt-3 grid grid-cols-2 gap-2">
               <button

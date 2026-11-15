@@ -62,6 +62,7 @@ interface GameState {
   chatHistories: Record<string, Message[]>;
   assetPrices: Record<string, number>;
   portfolio: Record<string, number>;
+  priceHistory: Record<string, number[]>;
   initGame: () => void;
   selectTrait: (traitId: string) => void;
   selectCareer: (careerId: string) => void;
@@ -124,6 +125,8 @@ const STOCK_MAX_MOVE = 0.05;
 const MEME_MIN_MOVE = -0.5;
 const MEME_MAX_MOVE = 2;
 const CRASH_MENTAL_PENALTY = 50;
+const HISTORY_MAX = 10;
+const HISTORY_INITIAL = 5;
 
 // Beban tambahan saat kartu curse dimainkan
 const CURSE_PENALTY: Stats = {
@@ -184,6 +187,11 @@ const defaultAssetPrices = (): Record<string, number> =>
 
 const defaultPortfolio = (): Record<string, number> =>
   Object.fromEntries(ASSETS.map((a) => [a.id, 0]));
+
+const defaultPriceHistory = (): Record<string, number[]> =>
+  Object.fromEntries(
+    ASSETS.map((a) => [a.id, Array<number>(HISTORY_INITIAL).fill(a.basePrice)]),
+  );
 
 const clampStat = (n: number) => Math.max(0, Math.min(100, n));
 const clampMoney = (n: number) => Math.max(0, n);
@@ -273,6 +281,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   chatHistories: defaultChatHistories(),
   assetPrices: defaultAssetPrices(),
   portfolio: defaultPortfolio(),
+  priceHistory: defaultPriceHistory(),
 
   initGame: () => {
     const deck = [...STARTER_DECK];
@@ -298,6 +307,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       chatHistories: defaultChatHistories(),
       assetPrices: defaultAssetPrices(),
       portfolio: defaultPortfolio(),
+      priceHistory: defaultPriceHistory(),
     });
     get().generateFeed();
   },
@@ -374,6 +384,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       chatHistories: defaultChatHistories(),
       assetPrices: defaultAssetPrices(),
       portfolio: defaultPortfolio(),
+      priceHistory: defaultPriceHistory(),
     });
   },
 
@@ -549,11 +560,12 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   updateMarketPrices: () => {
-    const { status, assetPrices, portfolio, stats } = get();
+    const { status, assetPrices, portfolio, stats, priceHistory } = get();
     if (status !== 'playing') return;
 
     const prices: Record<string, number> = { ...assetPrices };
     const holdings: Record<string, number> = { ...portfolio };
+    const history: Record<string, number[]> = { ...priceHistory };
     let crashPenalty = 0;
 
     for (const asset of ASSETS) {
@@ -583,6 +595,14 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
 
       prices[asset.id] = nextPrice;
+
+      // Riwayat harga: dorong harga baru, batasi maksimal HISTORY_MAX titik
+      const past = history[asset.id] ?? [];
+      const appended = [...past, nextPrice];
+      history[asset.id] =
+        appended.length > HISTORY_MAX
+          ? appended.slice(appended.length - HISTORY_MAX)
+          : appended;
     }
 
     const nextStats: Stats = {
@@ -594,6 +614,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({
       assetPrices: prices,
       portfolio: holdings,
+      priceHistory: history,
       stats: nextStats,
       status: dead ? 'lost' : 'playing',
       deathReason: dead
