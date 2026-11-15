@@ -6,6 +6,8 @@ import {
   Smartphone,
   Skull,
   RotateCcw,
+  Sparkles,
+  GraduationCap,
   type LucideIcon,
 } from 'lucide-react';
 import { useGameStore, MAX_AP, PATH_AGE } from '../store/useGameStore';
@@ -17,7 +19,7 @@ import CareerModal from './CareerModal';
 import type { CardColor } from '../data/cards';
 
 interface StatConfig {
-  key: 'health' | 'food' | 'mental';
+  key: 'health' | 'food' | 'mental' | 'tampang' | 'iq';
   label: string;
   Icon: LucideIcon;
   barClass: string;
@@ -27,6 +29,8 @@ const STATS: StatConfig[] = [
   { key: 'health', label: 'HEALTH', Icon: Heart, barClass: 'bg-coral' },
   { key: 'food', label: 'FOOD', Icon: Utensils, barClass: 'bg-sunny' },
   { key: 'mental', label: 'MENTAL', Icon: Brain, barClass: 'bg-white' },
+  { key: 'tampang', label: 'TAMPANG', Icon: Sparkles, barClass: 'bg-sunny' },
+  { key: 'iq', label: 'IQ', Icon: GraduationCap, barClass: 'bg-teal' },
 ];
 
 const CARD_CLASS: Record<CardColor, string> = {
@@ -134,7 +138,7 @@ export default function GameBoard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           {STATS.map(({ key, label, Icon, barClass }) => (
             <div key={key} className="rounded-xl bg-navy-dark/60 px-2 py-1.5">
               <div className="flex items-center justify-between">

@@ -8,6 +8,7 @@ import {
 import {
   EVENTS_POOL,
   BILL_EVENT,
+  type EventEffects,
   type GameEvent,
 } from '../data/events';
 import { TRAITS, type Trait } from '../data/traits';
@@ -37,7 +38,15 @@ export interface Stats {
   food: number;
   money: number;
   mental: number;
+  tampang: number;
+  iq: number;
 }
+
+/** Efek event + stat baru (opsional) agar tidak error walau EventEffects belum diubah */
+type ResolvedEventEffects = EventEffects & {
+  tampang?: number;
+  iq?: number;
+};
 
 interface GameState {
   status: GameStatus;
@@ -134,6 +143,8 @@ const CURSE_PENALTY: Stats = {
   food: -5,
   money: -5,
   mental: -10,
+  tampang: 0,
+  iq: 0,
 };
 
 // Balasan hardcoded NPC
@@ -251,10 +262,12 @@ const defaultStats = (): Stats => ({
   food: 100,
   money: 50,
   mental: 100,
+  tampang: 50,
+  iq: 50,
 });
 
 const statsFromTrait = (trait: Trait | null): Stats =>
-  trait ? { ...trait.startStats } : defaultStats();
+  trait ? { ...defaultStats(), ...trait.startStats } : defaultStats();
 
 const defaultFriends = (): NPC[] => [{ ...IBU_NPC }];
 
@@ -683,6 +696,10 @@ export const useGameStore = create<GameState>((set, get) => ({
           (penalty?.mental ?? 0) -
           debtStress,
       ),
+      tampang: clampStat(
+        stats.tampang + (effects.tampang ?? 0) + (penalty?.tampang ?? 0),
+      ),
+      iq: clampStat(stats.iq + (effects.iq ?? 0) + (penalty?.iq ?? 0)),
     };
 
     const statsDead = isDead(next);
@@ -762,16 +779,18 @@ export const useGameStore = create<GameState>((set, get) => ({
     const choice = activeEvent.choices[choiceIndex];
     if (!choice) return;
 
+    const effects: ResolvedEventEffects = choice.effects;
+
     const next: Stats = {
-      health: clampStat(stats.health + (choice.effects.health ?? 0)),
-      food: clampStat(stats.food + (choice.effects.food ?? 0)),
-      money: clampMoney(stats.money + (choice.effects.money ?? 0)),
-      mental: clampStat(stats.mental + (choice.effects.mental ?? 0)),
+      health: clampStat(stats.health + (effects.health ?? 0)),
+      food: clampStat(stats.food + (effects.food ?? 0)),
+      money: clampMoney(stats.money + (effects.money ?? 0)),
+      mental: clampStat(stats.mental + (effects.mental ?? 0)),
+      tampang: clampStat(stats.tampang + (effects.tampang ?? 0)),
+      iq: clampStat(stats.iq + (effects.iq ?? 0)),
     };
 
-    const nextDebt = choice.effects.debt
-      ? Math.max(0, debt + choice.effects.debt)
-      : debt;
+    const nextDebt = effects.debt ? Math.max(0, debt + effects.debt) : debt;
 
     const dead = isDead(next);
 

@@ -31,6 +31,8 @@ export interface CardEffects {
   food?: number;
   money?: number;
   mental?: number;
+  tampang?: number;
+  iq?: number;
 }
 
 export interface Card {
