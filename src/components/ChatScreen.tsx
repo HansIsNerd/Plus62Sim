@@ -43,29 +43,28 @@ export default function ChatScreen({ npc }: Props) {
   };
 
   return (
-    <div className="flex h-full flex-1 flex-col overflow-hidden">
-      <div className="flex items-center justify-between bg-white px-3 py-2 shadow-sm">
-        <div className="flex min-w-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setActiveChat(null)}
-            aria-label="Kembali ke kontak"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-navy/10 text-navy outline-none transition-colors hover:bg-navy/20 focus-visible:ring-4 focus-visible:ring-sunny"
-          >
-            <ChevronLeft size={18} strokeWidth={2.5} />
-          </button>
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sunny text-sm font-black text-white">
-            {npc.name.charAt(0)}
-          </div>
-          <h3 className="truncate text-sm font-black text-navy">{npc.name}</h3>
-        </div>
+    <div className="flex h-full w-full flex-col bg-gray-50">
+      {/* iOS Sticky Header */}
+      <div className="sticky top-0 z-40 flex h-12 shrink-0 items-center justify-between gap-2 border-b border-gray-200 bg-white/90 px-4 backdrop-blur-md">
+        <button
+          type="button"
+          aria-label="Kembali ke kontak"
+          onClick={() => setActiveChat(null)}
+          className="shrink-0 outline-none"
+        >
+          <ChevronLeft className="h-6 w-6 cursor-pointer text-blue-500" />
+        </button>
+        <span className="min-w-0 truncate text-sm font-semibold text-black">
+          {npc.name}
+        </span>
         <div className="flex shrink-0 items-center gap-1 rounded-xl bg-sunny px-2 py-1 text-xs font-bold text-navy">
           <Coins size={12} strokeWidth={2.5} />
           {money}
         </div>
       </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto bg-gray-50 p-4">
+      {/* Scrollable Content */}
+      <div className="min-h-0 flex-1 space-y-3 overflow-x-hidden overflow-y-auto p-4">
         {messages.map((m) => (
           <div
             key={m.id}
@@ -85,7 +84,8 @@ export default function ChatScreen({ npc }: Props) {
         <div ref={bottomRef} />
       </div>
 
-      <div className="bg-white px-3 pb-3 pt-2 shadow-[0_-1px_4px_rgba(0,0,0,0.06)]">
+      {/* Input (di luar area scroll) */}
+      <div className="shrink-0 bg-white px-3 pb-3 pt-2 shadow-[0_-1px_4px_rgba(0,0,0,0.06)]">
         <p className="mb-1 text-[10px] font-bold text-navy/50">
           {notice ??
             `Kirim pesan: Mental +${CHAT_MENTAL_GAIN}, money -${CHAT_MONEY_COST}`}

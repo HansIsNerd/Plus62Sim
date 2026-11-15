@@ -1,5 +1,5 @@
 // src/components/SocialApp.tsx
-import { RefreshCw, Search, UserPlus, Users } from 'lucide-react';
+import { ChevronLeft, RefreshCw, UserPlus, Users } from 'lucide-react';
 import { useGameStore } from '../store/useGameStore';
 import type { NPC } from '../data/npcs';
 
@@ -29,7 +29,7 @@ interface ProfileCardProps {
 
 function ProfileCard({ npc, onFollow }: ProfileCardProps) {
   return (
-    <article className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col gap-3">
+    <article className="flex w-full flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
       <header className="flex items-center gap-3">
         <div
           className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg font-black text-white ${avatarColor(npc.id)}`}
@@ -46,12 +46,12 @@ function ProfileCard({ npc, onFollow }: ProfileCardProps) {
 
       <div className="h-32 w-full rounded-xl bg-linear-to-br from-teal/50 to-navy/50" />
 
-      <p className="text-sm text-gray-600">{npc.buffText}</p>
+      <p className="line-clamp-2 text-sm text-gray-600">{npc.buffText}</p>
 
       <button
         type="button"
         onClick={() => onFollow(npc)}
-        className="w-full bg-coral text-white font-bold py-2 rounded-xl flex items-center justify-center gap-2 hover:bg-coral/90 outline-none transition-all active:translate-y-0.5 focus-visible:ring-4 focus-visible:ring-sunny"
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-coral py-2 font-bold text-white outline-none transition-all hover:bg-coral/90 active:translate-y-0.5 focus-visible:ring-4 focus-visible:ring-sunny"
       >
         <UserPlus size={18} strokeWidth={2.5} />
         Follow
@@ -64,25 +64,33 @@ export default function SocialApp() {
   const socialFeed = useGameStore((s) => s.socialFeed);
   const generateFeed = useGameStore((s) => s.generateFeed);
   const followNpc = useGameStore((s) => s.followNpc);
+  const setActiveApp = useGameStore((s) => s.setActiveApp);
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-gray-100">
-      <div className="flex shrink-0 items-center justify-between bg-white px-3 py-2 shadow-sm">
-        <div className="flex items-center gap-2 text-navy">
-          <Search size={18} strokeWidth={2.5} />
-          <h3 className="text-base font-black tracking-tight">Sosmed</h3>
-        </div>
+    <div className="flex h-full w-full flex-col bg-gray-50">
+      {/* iOS Sticky Header */}
+      <div className="sticky top-0 z-40 flex h-12 shrink-0 items-center justify-between border-b border-gray-200 bg-white/90 px-4 backdrop-blur-md">
+        <button
+          type="button"
+          aria-label="Kembali"
+          onClick={() => setActiveApp('home')}
+          className="outline-none"
+        >
+          <ChevronLeft className="h-6 w-6 cursor-pointer text-blue-500" />
+        </button>
+        <span className="text-sm font-semibold text-black">Sosmed</span>
         <button
           type="button"
           onClick={() => generateFeed()}
           aria-label="Refresh Feed"
-          className="flex h-8 w-8 items-center justify-center rounded-full bg-navy/10 text-navy outline-none transition-colors hover:bg-navy/20 focus-visible:ring-4 focus-visible:ring-sunny"
+          className="flex h-6 w-6 items-center justify-center text-blue-500 outline-none"
         >
           <RefreshCw size={16} strokeWidth={2.5} />
         </button>
       </div>
 
-      <div className="flex flex-col gap-3 p-3 overflow-y-auto h-full bg-gray-100">
+      {/* Scrollable Content */}
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-x-hidden overflow-y-auto p-4 pb-12">
         {socialFeed.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
             <Users size={40} strokeWidth={2.5} className="text-navy/30" />
