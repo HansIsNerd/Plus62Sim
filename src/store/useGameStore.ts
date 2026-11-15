@@ -13,9 +13,10 @@ import {
 import { TRAITS, type Trait } from '../data/traits';
 import { IBU_NPC, type NPC } from '../data/npcs';
 import { CAREERS_POOL, type Career } from '../data/careers';
+import type { ShopItem } from '../data/shop';
 
 export type GameStatus = 'idle' | 'playing' | 'lost';
-export type PhoneApp = 'home' | 'bank' | 'contacts' | 'social';
+export type PhoneApp = 'home' | 'bank' | 'contacts' | 'social' | 'shop';
 export type PathChoice = 'none' | 'kuliah' | 'kerja';
 
 export type Message = {
@@ -65,6 +66,7 @@ interface GameState {
   addFriend: (npc: NPC) => void;
   setActiveChat: (npcId: string | null) => void;
   sendMessage: (npcId: string, text: string) => boolean;
+  buyItem: (item: ShopItem) => boolean;
 }
 
 export const START_AGE = 6;
@@ -135,6 +137,12 @@ let messageCounter = 0;
 const newMessageId = () => {
   messageCounter += 1;
   return `msg-${Date.now()}-${messageCounter}`;
+};
+
+let itemCounter = 0;
+const newItemCardId = (baseId: string) => {
+  itemCounter += 1;
+  return `${baseId}-${Date.now()}-${itemCounter}`;
 };
 
 const defaultChatHistories = (): Record<string, Message[]> => ({
@@ -270,9 +278,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (age < PATH_AGE) return;
 
     if (path === 'kuliah') {
-      const collegeDeck = STARTER_DECK.filter((c) =>
-        c.stage?.includes('college'),
-      );
+      // Item consumable dari toko tetap dibawa ke deck kuliah
+      const consumables = deck.filter((c) => c.type === 'consumable');
+      const collegeDeck = [
+        ...STARTER_DECK.filter((c) => c.stage?.includes('college')),
+        ...consumables,
+      ];
       set({
         pathChoice: 'kuliah',
         deck: collegeDeck,
@@ -411,6 +422,24 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
   },
 
+  buyItem: (item) => {
+    const { status, stats, deck } = get();
+    if (status !== 'playing') return false;
+    if (stats.money < item.price) return false;
+
+    // ID unik per instance agar pembelian ganda tidak bentrok di hand
+    const purchased: Card = {
+      ...item.card,
+      id: newItemCardId(item.card.id),
+    };
+
+    set({
+      stats: { ...stats, money: clampMoney(stats.money - item.price) },
+      deck: [...deck, purchased],
+    });
+    return true;
+  },
+
   playCard: (cardId) => {
     const {
       hand,
@@ -471,6 +500,12 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     const statsDead = isDead(next);
 
+    // Kartu consumable habis dipakai: dibuang dari deck
+    const nextDeck =
+      card.type === 'consumable'
+        ? deck.filter((c) => c.id !== card.id)
+        : deck;
+
     // Kurangi AP; jika habis, umur +1 dan AP di-reset
     const apAfter = actionPoints - 1;
     const agedUp = apAfter <= 0;
@@ -518,8 +553,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       stats: next,
       age: nextAge,
       actionPoints: nextAP,
+      deck: nextDeck,
       queue: [...queue, card].slice(-MAX_QUEUE),
-      hand: drawHand(deck, nextAge, pathChoice),
+      hand: drawHand(nextDeck, nextAge, pathChoice),
       status: lost ? 'lost' : 'playing',
       deathReason,
       activeEvent: event,

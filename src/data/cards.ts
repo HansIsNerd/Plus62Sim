@@ -14,8 +14,16 @@ import {
 } from 'lucide-react';
 
 export type CardColor = 'coral' | 'sunny' | 'teal';
-export type CardType = 'action' | 'curse';
-export type CardTag = 'work' | 'food' | 'rest' | 'social' | 'health' | 'study' | 'play';
+export type CardType = 'action' | 'curse' | 'consumable';
+export type CardTag =
+  | 'work'
+  | 'food'
+  | 'rest'
+  | 'social'
+  | 'health'
+  | 'study'
+  | 'play'
+  | 'consumable';
 export type LifeStage = 'child' | 'teen' | 'college' | 'adult';
 
 export interface CardEffects {

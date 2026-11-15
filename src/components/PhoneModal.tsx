@@ -9,6 +9,7 @@ import {
   MessageCircle,
   UserPlus,
   Search,
+  ShoppingBag,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -19,6 +20,7 @@ import {
 } from '../store/useGameStore';
 import { NPC_POOL, type NPC } from '../data/npcs';
 import ChatScreen from './ChatScreen';
+import ShopApp from './ShopApp';
 
 const AMOUNT = 50;
 
@@ -27,6 +29,7 @@ const APP_TITLE: Record<PhoneApp, string> = {
   bank: 'Bank Plus62',
   social: 'Sosmed',
   contacts: 'Kontak',
+  shop: 'Shopee',
 };
 
 interface HomeApp {
@@ -41,6 +44,13 @@ const HOME_APPS: HomeApp[] = [
   { key: 'bank', label: 'Bank', Icon: Landmark, bg: 'bg-sunny', shadow: 'shadow-sunny' },
   { key: 'social', label: 'Sosmed', Icon: Users, bg: 'bg-coral', shadow: 'shadow-coral' },
   { key: 'contacts', label: 'Kontak', Icon: MessageCircle, bg: 'bg-teal', shadow: 'shadow-teal' },
+  {
+    key: 'shop',
+    label: 'Shopee',
+    Icon: ShoppingBag,
+    bg: 'bg-orange-500',
+    shadow: 'shadow-[0_8px_0_0_#C2410C]',
+  },
 ];
 
 const randomNpc = (exclude: string[] = []): NPC | null => {
@@ -299,6 +309,7 @@ export default function PhoneModal() {
             {activeApp === 'home' && <HomeScreen />}
             {activeApp === 'bank' && <BankApp />}
             {activeApp === 'social' && <SocialApp />}
+            {activeApp === 'shop' && <ShopApp />}
             {activeApp === 'contacts' && chatNpc && <ChatScreen npc={chatNpc} />}
             {activeApp === 'contacts' && !chatNpc && <ContactsApp />}
           </div>
