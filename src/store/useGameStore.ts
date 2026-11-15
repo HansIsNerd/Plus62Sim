@@ -13,6 +13,7 @@ export type GameStatus = 'idle' | 'playing' | 'won' | 'lost';
 export interface Stats {
   health: number;
   food: number;
+  /** Nominal uang (Rp). Tidak dibatasi maksimal, minimal 0. */
   wealth: number;
   mental: number;
 }
@@ -63,7 +64,11 @@ const CURSE_PENALTY: Stats = {
   mental: -10,
 };
 
+// Stat bar (health, food, mental): 0-100
 const clamp = (n: number) => Math.max(0, Math.min(100, n));
+
+// Wealth: nominal uang, hanya dibatasi minimal 0 (tanpa batas atas)
+const clampMoney = (n: number) => Math.max(0, n);
 
 const isDead = (s: Stats) => s.mental <= 0 || s.health <= 0 || s.food <= 0;
 
@@ -173,7 +178,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const { status, stats, debt } = get();
     if (status !== 'playing' || amount <= 0) return;
     set({
-      stats: { ...stats, wealth: clamp(stats.wealth + amount) },
+      stats: { ...stats, wealth: clampMoney(stats.wealth + amount) },
       debt: debt + amount + amount * DEBT_INTEREST,
     });
   },
@@ -185,7 +190,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     // Jangan bayar melebihi sisa utang
     const pay = Math.min(amount, debt);
     set({
-      stats: { ...stats, wealth: clamp(stats.wealth - pay) },
+      stats: { ...stats, wealth: clampMoney(stats.wealth - pay) },
       debt: Math.max(0, debt - pay),
     });
   },
@@ -240,7 +245,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           (bonus.food ?? 0) -
           DAILY_FOOD_DECAY,
       ),
-      wealth: clamp(
+      wealth: clampMoney(
         stats.wealth +
           (effects.wealth ?? 0) +
           (penalty?.wealth ?? 0) +
@@ -287,7 +292,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const next: Stats = {
       health: clamp(stats.health + (choice.effects.health ?? 0)),
       food: clamp(stats.food + (choice.effects.food ?? 0)),
-      wealth: clamp(stats.wealth + (choice.effects.wealth ?? 0)),
+      wealth: clampMoney(stats.wealth + (choice.effects.wealth ?? 0)),
       mental: clamp(stats.mental + (choice.effects.mental ?? 0)),
     };
 

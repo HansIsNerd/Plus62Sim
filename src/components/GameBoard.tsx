@@ -19,7 +19,7 @@ import { GameOverOverlay } from './GameOverOverlay';
 import type { CardColor } from '../data/cards';
 
 interface StatConfig {
-  key: 'health' | 'food' | 'wealth' | 'mental';
+  key: 'health' | 'food' | 'mental';
   label: string;
   Icon: LucideIcon;
   barClass: string;
@@ -28,7 +28,6 @@ interface StatConfig {
 const STATS: StatConfig[] = [
   { key: 'health', label: 'HEALTH', Icon: Heart, barClass: 'bg-coral' },
   { key: 'food', label: 'FOOD', Icon: Utensils, barClass: 'bg-sunny' },
-  { key: 'wealth', label: 'WEALTH', Icon: Coins, barClass: 'bg-teal' },
   { key: 'mental', label: 'MENTAL', Icon: Brain, barClass: 'bg-white' },
 ];
 
@@ -72,6 +71,9 @@ export default function GameBoard() {
             <span className="text-xs font-bold text-white/70">
               HARI {day} / {WIN_DAY}
             </span>
+            <div className="flex items-center gap-2 text-white font-bold text-lg bg-teal px-4 py-2 rounded-xl shadow-md">
+              <Coins size={18} /> Rp {stats.wealth}
+            </div>
             <button
               type="button"
               onClick={togglePhone}
@@ -87,7 +89,7 @@ export default function GameBoard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           {STATS.map(({ key, label, Icon, barClass }) => (
             <div key={key} className="rounded-xl bg-navy-dark/60 px-2 py-1.5">
               <div className="flex items-center justify-between">

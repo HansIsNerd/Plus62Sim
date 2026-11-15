@@ -40,19 +40,23 @@ export default function PhoneModal() {
               <div className="flex items-center gap-2 text-navy/60">
                 <Coins size={14} strokeWidth={2.5} />
                 <span className="text-[10px] font-bold uppercase">
-                  Wealth
+                  Uang (Wealth)
                 </span>
               </div>
-              <p className="mt-1 text-3xl font-black text-navy">{wealth}</p>
+              <p className="mt-1 text-3xl font-black text-navy">
+                Rp {wealth}
+              </p>
             </div>
 
             <div className="rounded-2xl bg-white p-4 shadow-sm">
               <div className="flex items-center gap-2 text-coral-dark">
                 <TrendingDown size={14} strokeWidth={2.5} />
-                <span className="text-[10px] font-bold uppercase">Debt</span>
+                <span className="text-[10px] font-bold uppercase">
+                  Utang (Debt)
+                </span>
               </div>
               <p className="mt-1 text-3xl font-black text-coral-dark">
-                {Math.round(debt)}
+                Rp {Math.round(debt)}
               </p>
               <p className="mt-1 text-[10px] font-semibold text-navy/50">
                 Bunga 20% per pinjaman. Utang membuat mental turun tiap hari.
@@ -65,7 +69,7 @@ export default function PhoneModal() {
                 onClick={() => borrowMoney(AMOUNT)}
                 className="w-full rounded-2xl bg-coral px-4 py-3 text-base font-black text-white shadow-coral outline-none transition-all active:translate-y-1 active:shadow-none focus-visible:ring-4 focus-visible:ring-sunny"
               >
-                Pinjam {AMOUNT}
+                Pinjam Rp {AMOUNT}
               </button>
               <button
                 type="button"
@@ -73,7 +77,7 @@ export default function PhoneModal() {
                 disabled={!canPay}
                 className="w-full rounded-2xl bg-teal px-4 py-3 text-base font-black text-white shadow-teal outline-none transition-all active:translate-y-1 active:shadow-none focus-visible:ring-4 focus-visible:ring-sunny disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Bayar {AMOUNT}
+                Bayar Rp {AMOUNT}
               </button>
             </div>
           </div>
