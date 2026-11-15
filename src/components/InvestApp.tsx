@@ -15,9 +15,11 @@ const RISK_META: Record<AssetRisk, { label: string; className: string }> = {
   extreme: { label: 'Ekstrem', className: 'bg-coral/20 text-coral-dark' },
 };
 
-const SPARK_W = 96;
-const SPARK_H = 40;
-const SPARK_PAD = 4;
+// Koordinat internal viewBox (di-scale penuh ke container via preserveAspectRatio="none")
+const SPARK_W = 300;
+const SPARK_H = 64;
+const SPARK_PAD_X = 6;
+const SPARK_PAD_Y = 8;
 
 interface SparklineProps {
   data: number[];
@@ -37,61 +39,75 @@ function Sparkline({ data }: SparklineProps) {
   }, [dataKey]);
 
   if (data.length < 2) {
-    return <div className="h-10 w-24 shrink-0" aria-hidden="true" />;
+    return <div className="h-full w-full" aria-hidden="true" />;
   }
 
   const min = Math.min(...data);
   const max = Math.max(...data);
   const range = max - min;
-  const innerW = SPARK_W - SPARK_PAD * 2;
-  const innerH = SPARK_H - SPARK_PAD * 2;
+  const innerW = SPARK_W - SPARK_PAD_X * 2;
+  const innerH = SPARK_H - SPARK_PAD_Y * 2;
 
   const coords = data.map((value, i) => {
-    const x = SPARK_PAD + (i / (data.length - 1)) * innerW;
+    const x = SPARK_PAD_X + (i / (data.length - 1)) * innerW;
     const y =
       range === 0
         ? SPARK_H / 2
-        : SPARK_PAD + innerH - ((value - min) / range) * innerH;
+        : SPARK_PAD_Y + innerH - ((value - min) / range) * innerH;
     return { x, y };
   });
 
   const points = coords
     .map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`)
     .join(' ');
+  const areaPoints = `${SPARK_PAD_X},${SPARK_H} ${points} ${coords[coords.length - 1].x.toFixed(1)},${SPARK_H}`;
   const last = coords[coords.length - 1];
   const up = data[data.length - 1] > data[0];
   const strokeClass = up ? 'stroke-teal' : 'stroke-coral';
   const fillClass = up ? 'fill-teal' : 'fill-coral';
 
   return (
-    <svg
-      viewBox={`0 0 ${SPARK_W} ${SPARK_H}`}
-      className="h-10 w-24 shrink-0"
-      role="img"
-      aria-label={up ? 'Tren naik' : 'Tren turun'}
-      fill="none"
-    >
-      <polyline
-        points={points}
-        pathLength={1}
-        strokeWidth={2.5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeDasharray={1}
-        strokeDashoffset={drawn ? 0 : 1}
-        className={`${strokeClass} ${
-          drawn ? 'transition-all duration-500' : 'transition-none'
-        }`}
+    <div className="relative h-full w-full">
+      <svg
+        viewBox={`0 0 ${SPARK_W} ${SPARK_H}`}
+        preserveAspectRatio="none"
+        className="h-full w-full"
+        role="img"
+        aria-label={up ? 'Tren naik' : 'Tren turun'}
+        fill="none"
+      >
+        <polygon
+          points={areaPoints}
+          className={`${fillClass} transition-opacity duration-500 ${
+            drawn ? 'opacity-10' : 'opacity-0'
+          }`}
+        />
+        <polyline
+          points={points}
+          pathLength={1}
+          strokeWidth={3}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeDasharray={1}
+          strokeDashoffset={drawn ? 0 : 1}
+          vectorEffect="non-scaling-stroke"
+          className={`${strokeClass} ${
+            drawn ? 'transition-all duration-500' : 'transition-none'
+          }`}
+        />
+      </svg>
+      {/* Titik akhir dirender sebagai HTML agar tidak ter-stretch oleh preserveAspectRatio="none" */}
+      <span
+        aria-hidden="true"
+        className={`absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity duration-500 ${
+          up ? 'bg-teal' : 'bg-coral'
+        } ${drawn ? 'opacity-100' : 'opacity-0'}`}
+        style={{
+          left: `${(last.x / SPARK_W) * 100}%`,
+          top: `${(last.y / SPARK_H) * 100}%`,
+        }}
       />
-      <circle
-        cx={last.x}
-        cy={last.y}
-        r={3}
-        className={`${fillClass} transition-all duration-500 ${
-          drawn ? 'opacity-100' : 'opacity-0'
-        }`}
-      />
-    </svg>
+    </div>
   );
 }
 
@@ -156,38 +172,38 @@ export default function InvestApp() {
               key={asset.id}
               className="mb-3 w-full rounded-2xl bg-white p-4 shadow-sm"
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <h4 className="truncate text-base font-black text-navy">
-                    {asset.name}
-                  </h4>
-                  <span
-                    className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${risk.className}`}
-                  >
-                    {risk.label}
-                  </span>
-                </div>
-                <div className="shrink-0 text-right">
-                  <p className="text-[10px] font-bold uppercase text-navy/50">
-                    Harga
-                  </p>
-                  <p
-                    className={`whitespace-nowrap text-lg font-black ${
-                      price > 0 ? 'text-navy' : 'text-coral-dark'
-                    }`}
-                  >
-                    Rp {price}
-                  </p>
-                </div>
+              {/* Baris 1: Header */}
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="min-w-0 truncate text-lg font-bold text-navy">
+                  {asset.name}
+                </h4>
+                <p
+                  className={`shrink-0 whitespace-nowrap text-xl font-bold ${
+                    price > 0 ? 'text-teal' : 'text-coral-dark'
+                  }`}
+                >
+                  Rp {price}
+                </p>
               </div>
 
-              <div className="mt-2 flex items-center justify-between gap-2">
-                <p className="min-w-0 truncate text-xs font-bold text-navy/60">
-                  Kepemilikan: {owned} unit
-                </p>
+              {/* Baris 2: Grafik */}
+              <div className="my-2 h-16 w-full">
                 <Sparkline data={priceHistory[asset.id] || []} />
               </div>
 
+              {/* Baris 3: Info */}
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span
+                  className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${risk.className}`}
+                >
+                  {risk.label}
+                </span>
+                <span className="min-w-0 truncate font-semibold text-gray-500">
+                  Kepemilikan: {owned} unit
+                </span>
+              </div>
+
+              {/* Baris 4: Tombol */}
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <button
                   type="button"

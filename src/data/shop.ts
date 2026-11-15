@@ -1,11 +1,14 @@
-import { Coffee, Pill, Shirt, SprayCan, Utensils } from 'lucide-react';
+import { Coffee, Pill, Shirt, Sparkles, Utensils } from 'lucide-react';
 import type { Card } from './cards';
+
+export type ShopSvgId = 'kopi' | 'obat' | 'nasi' | 'baju' | 'parfum';
 
 export interface ShopItem {
   id: string;
   name: string;
   description: string;
   price: number;
+  svgId: ShopSvgId;
   card: Card;
 }
 
@@ -15,6 +18,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Kopi',
     description: 'Segelas kopi hangat penambah semangat.',
     price: 20,
+    svgId: 'kopi',
     card: {
       id: 'item_kopi',
       title: 'Kopi',
@@ -31,6 +35,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Obat',
     description: 'Obat warung untuk memulihkan badan.',
     price: 50,
+    svgId: 'obat',
     card: {
       id: 'item_obat',
       title: 'Obat',
@@ -47,6 +52,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Nasi Padang',
     description: 'Nasi dengan lauk lengkap, kenyang maksimal.',
     price: 30,
+    svgId: 'nasi',
     card: {
       id: 'item_nasi_padang',
       title: 'Nasi Padang',
@@ -63,6 +69,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Baju Branded',
     description: 'Outfit mahal bikin penampilan dan percaya diri naik.',
     price: 50,
+    svgId: 'baju',
     card: {
       id: 'item_baju_branded',
       title: 'Baju Branded',
@@ -79,11 +86,12 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Parfum Mahal',
     description: 'Wangi semerbak, orang pun menoleh.',
     price: 40,
+    svgId: 'parfum',
     card: {
       id: 'item_parfum_mahal',
       title: 'Parfum Mahal',
       description: 'Semprot sekali, aura langsung beda.',
-      Icon: SprayCan,
+      Icon: Sparkles,
       color: 'teal',
       type: 'action',
       tag: 'consumable',
