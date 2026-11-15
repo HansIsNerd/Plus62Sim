@@ -5,13 +5,13 @@ import {
   Utensils,
   Users,
   Leaf,
-  Banknote,
-  CloudRain,
+  Heart,
+  Briefcase,
   type LucideIcon,
 } from 'lucide-react';
 
 export type CardColor = 'coral' | 'sunny' | 'teal';
-export type CardType = 'action' | 'curse';
+export type CardType = 'action' | 'curse' | 'npc';
 
 export interface CardEffects {
   health?: number;
@@ -27,7 +27,13 @@ export interface Card {
   Icon: LucideIcon;
   color: CardColor;
   type: CardType;
+  /**
+   * Jika type === 'npc', `effects` adalah efek pasif
+   * yang diterapkan setiap kali pemain memainkan kartu.
+   */
   effects: CardEffects;
+  /** Nama NPC. Jika ada, kartu ini adalah kartu NPC (pasif, tidak dimainkan seperti action). */
+  npcName?: string;
 }
 
 export const STARTER_DECK: Card[] = [
@@ -77,30 +83,37 @@ export const STARTER_DECK: Card[] = [
     effects: { mental: 15, wealth: -5 },
   },
   {
-    id: 'meramu',
-    title: 'Meramu Herbal',
+    id: 'Jamu Herbal',
+    title: 'Minum Jamu Racikan Herbal',
     description: 'Racik dedaunan penyembuh.',
     Icon: Leaf,
     color: 'teal',
     type: 'action',
     effects: { health: 15, mental: 5, food: -5 },
   },
+];
+
+// Kartu NPC: efek pasif tiap pemain memainkan kartu.
+// Sengaja dipisah dari STARTER_DECK agar tidak ikut ditarik ke tangan sebagai kartu action.
+export const NPC_CARDS: Card[] = [
   {
-    id: 'hutang',
-    title: 'Hutang',
-    description: 'Cicilan menghantui. Tidak bisa dibuang.',
-    Icon: Banknote,
-    color: 'coral',
-    type: 'curse',
-    effects: { wealth: -10, mental: -10 },
+    id: 'npc-ibu',
+    title: 'Ibu',
+    description: 'Doa dan masakan Ibu selalu menenangkan.',
+    Icon: Heart,
+    color: 'teal',
+    type: 'npc',
+    npcName: 'Ibu',
+    effects: { mental: 5 },
   },
   {
-    id: 'trauma',
-    title: 'Overthinking',
-    description: 'Pikiran buruk datang tengah malam.',
-    Icon: CloudRain,
-    color: 'coral',
-    type: 'curse',
-    effects: { mental: -15 },
+    id: 'npc-bos',
+    title: 'Bos',
+    description: 'Gaji mengalir, tapi tekanan tak pernah berhenti.',
+    Icon: Briefcase,
+    color: 'sunny',
+    type: 'npc',
+    npcName: 'Bos',
+    effects: { wealth: 5, mental: -2 },
   },
 ];

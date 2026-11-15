@@ -1,5 +1,10 @@
 import { create } from 'zustand';
-import { STARTER_DECK, type Card } from '../data/cards';
+import {
+  STARTER_DECK,
+  NPC_CARDS,
+  type Card,
+  type CardEffects,
+} from '../data/cards';
 import { EVENTS_POOL, type GameEvent } from '../data/events';
 import { TRAITS, type Trait } from '../data/traits';
 
@@ -19,6 +24,7 @@ interface GameState {
   deck: Card[];
   hand: Card[];
   queue: Card[];
+  npcRelations: Record<string, number>;
   activeEvent: GameEvent | null;
   activeTrait: Trait | null;
   initGame: () => void;
@@ -33,6 +39,12 @@ const MAX_QUEUE = 3;
 const HAND_SIZE = 3;
 const DAILY_FOOD_DECAY = 3;
 const EVENT_CHANCE = 0.3;
+
+// Relasi NPC di atas ambang ini memberi bonus stats saat kartu action dimainkan
+export const NPC_BONUS_THRESHOLD = 50;
+// Kenaikan relasi tiap kali kartu NPC dimainkan
+const NPC_RELATION_GAIN = 10;
+const MAX_RELATION = 100;
 
 // Beban tambahan saat kartu curse dimainkan
 const CURSE_PENALTY: Stats = {
@@ -66,6 +78,31 @@ const defaultStats = (): Stats => ({
 const statsFromTrait = (trait: Trait | null): Stats =>
   trait ? { ...trait.startStats } : defaultStats();
 
+const defaultRelations = (): Record<string, number> => ({
+  Ibu: 50,
+  Bos: 20,
+});
+
+// Total bonus dari semua NPC yang relasinya melewati ambang
+const npcBonus = (relations: Record<string, number>): CardEffects => {
+  const bonus: Required<CardEffects> = {
+    health: 0,
+    food: 0,
+    wealth: 0,
+    mental: 0,
+  };
+  for (const npc of NPC_CARDS) {
+    if (!npc.npcName) continue;
+    if ((relations[npc.npcName] ?? 0) > NPC_BONUS_THRESHOLD) {
+      bonus.health += npc.effects.health ?? 0;
+      bonus.food += npc.effects.food ?? 0;
+      bonus.wealth += npc.effects.wealth ?? 0;
+      bonus.mental += npc.effects.mental ?? 0;
+    }
+  }
+  return bonus;
+};
+
 export const useGameStore = create<GameState>((set, get) => ({
   status: 'idle',
   day: 1,
@@ -73,11 +110,12 @@ export const useGameStore = create<GameState>((set, get) => ({
   deck: [],
   hand: [],
   queue: [],
+  npcRelations: defaultRelations(),
   activeEvent: null,
   activeTrait: null,
 
   initGame: () => {
-    const deck = [...STARTER_DECK];
+    const deck = [...STARTER_DECK, ...NPC_CARDS];
     set({
       status: 'playing',
       day: 1,
@@ -85,6 +123,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       deck,
       hand: drawHand(deck),
       queue: [],
+      npcRelations: defaultRelations(),
       activeEvent: null,
     });
   },
@@ -105,35 +144,61 @@ export const useGameStore = create<GameState>((set, get) => ({
       deck: [],
       hand: [],
       queue: [],
+      npcRelations: defaultRelations(),
       activeEvent: null,
       activeTrait: null,
     });
   },
 
   playCard: (cardId) => {
-    const { hand, stats, deck, queue, day, status, activeEvent } = get();
+    const { hand, stats, deck, queue, day, status, activeEvent, npcRelations } =
+      get();
     if (status !== 'playing' || activeEvent) return;
 
     const card = hand.find((c) => c.id === cardId);
     if (!card) return;
 
+    const isNpc = !!card.npcName;
+    const isAction = card.type === 'action' && !isNpc;
+
+    // Kartu NPC bersifat pasif: tidak menerapkan efek langsung, hanya menaikkan relasi
+    const effects: CardEffects = isNpc ? {} : card.effects;
     const penalty = card.type === 'curse' ? CURSE_PENALTY : null;
+    const bonus: CardEffects = isAction ? npcBonus(npcRelations) : {};
+
+    const nextRelations: Record<string, number> = { ...npcRelations };
+    if (card.npcName) {
+      nextRelations[card.npcName] = Math.min(
+        MAX_RELATION,
+        (nextRelations[card.npcName] ?? 0) + NPC_RELATION_GAIN,
+      );
+    }
 
     const next: Stats = {
       health: clamp(
-        stats.health + (card.effects.health ?? 0) + (penalty?.health ?? 0),
+        stats.health +
+          (effects.health ?? 0) +
+          (penalty?.health ?? 0) +
+          (bonus.health ?? 0),
       ),
       food: clamp(
         stats.food +
-          (card.effects.food ?? 0) +
-          (penalty?.food ?? 0) -
+          (effects.food ?? 0) +
+          (penalty?.food ?? 0) +
+          (bonus.food ?? 0) -
           DAILY_FOOD_DECAY,
       ),
       wealth: clamp(
-        stats.wealth + (card.effects.wealth ?? 0) + (penalty?.wealth ?? 0),
+        stats.wealth +
+          (effects.wealth ?? 0) +
+          (penalty?.wealth ?? 0) +
+          (bonus.wealth ?? 0),
       ),
       mental: clamp(
-        stats.mental + (card.effects.mental ?? 0) + (penalty?.mental ?? 0),
+        stats.mental +
+          (effects.mental ?? 0) +
+          (penalty?.mental ?? 0) +
+          (bonus.mental ?? 0),
       ),
     };
 
@@ -150,6 +215,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({
       stats: next,
       queue: [...queue, card].slice(-MAX_QUEUE),
+      npcRelations: nextRelations,
       day: won ? WIN_DAY : nextDay,
       hand: drawHand(deck),
       status: lost ? 'lost' : won ? 'won' : 'playing',

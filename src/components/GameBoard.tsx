@@ -3,9 +3,14 @@ import {
   Utensils,
   Coins,
   Brain,
+  Users,
   type LucideIcon,
 } from 'lucide-react';
-import { useGameStore, WIN_DAY } from '../store/useGameStore';
+import {
+  useGameStore,
+  WIN_DAY,
+  NPC_BONUS_THRESHOLD,
+} from '../store/useGameStore';
 import { SquigglyPattern } from './SquigglyPattern';
 import EventModal from './EventModal';
 import { GameOverOverlay } from './GameOverOverlay';
@@ -40,9 +45,11 @@ export default function GameBoard() {
   const status = useGameStore((s) => s.status);
   const activeEvent = useGameStore((s) => s.activeEvent);
   const activeTrait = useGameStore((s) => s.activeTrait);
+  const npcRelations = useGameStore((s) => s.npcRelations);
   const playCard = useGameStore((s) => s.playCard);
 
   const locked = status !== 'playing' || !!activeEvent;
+  const relationEntries = Object.entries(npcRelations);
 
   return (
     <main className="relative flex min-h-screen flex-col bg-navy px-4 py-4 md:px-6">
@@ -82,6 +89,43 @@ export default function GameBoard() {
             </div>
           ))}
         </div>
+
+        {relationEntries.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1 text-white/60">
+              <Users size={12} strokeWidth={2.5} />
+              <span className="text-[10px] font-bold uppercase">Relasi</span>
+            </div>
+            {relationEntries.map(([name, value]) => {
+              const bonusActive = value > NPC_BONUS_THRESHOLD;
+              return (
+                <div
+                  key={name}
+                  className="flex min-w-28 flex-1 items-center gap-2 rounded-full bg-navy-dark/60 px-3 py-1 sm:max-w-48"
+                >
+                  <span className="text-[10px] font-bold uppercase text-white/80">
+                    {name}
+                  </span>
+                  <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/15">
+                    <div
+                      className={`h-1 rounded-full transition-all duration-300 ${
+                        bonusActive ? 'bg-sunny' : 'bg-white/60'
+                      }`}
+                      style={{ width: `${value}%` }}
+                    />
+                  </div>
+                  <span
+                    className={`text-[10px] font-bold ${
+                      bonusActive ? 'text-sunny' : 'text-white/70'
+                    }`}
+                  >
+                    {value}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </header>
 
       <section className="mx-auto mt-8 grid w-full max-w-5xl flex-1 grid-cols-1 content-center gap-6 pb-6 md:grid-cols-3">
