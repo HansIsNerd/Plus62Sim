@@ -1,4 +1,4 @@
-import { useState } from 'react';
+// src/components/PhoneModal.tsx
 import {
   Landmark,
   X,
@@ -7,8 +7,6 @@ import {
   ChevronLeft,
   Users,
   MessageCircle,
-  UserPlus,
-  Search,
   ShoppingBag,
   type LucideIcon,
 } from 'lucide-react';
@@ -18,9 +16,9 @@ import {
   CHAT_MONEY_COST,
   type PhoneApp,
 } from '../store/useGameStore';
-import { NPC_POOL, type NPC } from '../data/npcs';
 import ChatScreen from './ChatScreen';
 import ShopApp from './ShopApp';
+import SocialApp from './SocialApp';
 
 const AMOUNT = 50;
 
@@ -52,12 +50,6 @@ const HOME_APPS: HomeApp[] = [
     shadow: 'shadow-[0_8px_0_0_#C2410C]',
   },
 ];
-
-const randomNpc = (exclude: string[] = []): NPC | null => {
-  const candidates = NPC_POOL.filter((n) => !exclude.includes(n.id));
-  if (candidates.length === 0) return null;
-  return candidates[Math.floor(Math.random() * candidates.length)];
-};
 
 function HomeScreen() {
   const setActiveApp = useGameStore((s) => s.setActiveApp);
@@ -129,75 +121,6 @@ function BankApp() {
           className="w-full rounded-2xl bg-teal px-4 py-3 text-base font-black text-white shadow-teal outline-none transition-all active:translate-y-1 active:shadow-none focus-visible:ring-4 focus-visible:ring-sunny disabled:cursor-not-allowed disabled:opacity-50"
         >
           Bayar {AMOUNT}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function SocialApp() {
-  const friends = useGameStore((s) => s.friends);
-  const addFriend = useGameStore((s) => s.addFriend);
-
-  const [npc, setNpc] = useState<NPC | null>(() =>
-    randomNpc(friends.map((f) => f.id)),
-  );
-
-  const handleAdd = () => {
-    if (!npc) return;
-    addFriend(npc);
-    setNpc(randomNpc([...friends.map((f) => f.id), npc.id]));
-  };
-
-  const handleShuffle = () => {
-    setNpc(randomNpc(friends.map((f) => f.id)));
-  };
-
-  if (!npc) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
-        <Users size={40} strokeWidth={2.5} className="text-navy/30" />
-        <p className="text-sm font-bold text-navy/60">
-          Semua orang sudah jadi temanmu.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-1 flex-col gap-3 p-4">
-      <p className="text-[10px] font-bold uppercase text-navy/50">
-        Orang yang mungkin kamu kenal
-      </p>
-      <div className="rounded-2xl bg-white p-5 text-center shadow-sm">
-        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-coral text-3xl font-black text-white">
-          {npc.name.charAt(0)}
-        </div>
-        <h3 className="mt-3 text-2xl font-black text-navy">{npc.name}</h3>
-        <span className="mt-1 inline-block rounded-full bg-navy/10 px-3 py-0.5 text-[10px] font-bold uppercase text-navy">
-          {npc.role}
-        </span>
-        <p className="mt-3 text-xs font-semibold text-navy/60">
-          {npc.buffText}
-        </p>
-      </div>
-
-      <div className="mt-auto flex flex-col gap-3 pb-2">
-        <button
-          type="button"
-          onClick={handleAdd}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-teal px-4 py-3 text-base font-black text-white shadow-teal outline-none transition-all active:translate-y-1 active:shadow-none focus-visible:ring-4 focus-visible:ring-sunny"
-        >
-          <UserPlus size={18} strokeWidth={2.5} />
-          Add Friend
-        </button>
-        <button
-          type="button"
-          onClick={handleShuffle}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-navy/10 px-4 py-3 text-sm font-black text-navy outline-none transition-colors hover:bg-navy/20 focus-visible:ring-4 focus-visible:ring-sunny"
-        >
-          <Search size={16} strokeWidth={2.5} />
-          Cari Lagi
         </button>
       </div>
     </div>
@@ -304,7 +227,7 @@ export default function PhoneModal() {
           )}
 
           <div
-            className={`flex flex-1 flex-col overflow-hidden ${inChat ? 'pt-6' : ''}`}
+            className={`flex min-h-0 flex-1 flex-col overflow-hidden ${inChat ? 'pt-6' : ''}`}
           >
             {activeApp === 'home' && <HomeScreen />}
             {activeApp === 'bank' && <BankApp />}

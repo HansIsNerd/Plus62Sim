@@ -11,7 +11,7 @@ import {
   type GameEvent,
 } from '../data/events';
 import { TRAITS, type Trait } from '../data/traits';
-import { IBU_NPC, type NPC } from '../data/npcs';
+import { IBU_NPC, NPC_POOL, type NPC } from '../data/npcs';
 import { CAREERS_POOL, type Career } from '../data/careers';
 import type { ShopItem } from '../data/shop';
 
@@ -49,6 +49,7 @@ interface GameState {
   isPhoneOpen: boolean;
   debt: number;
   friends: NPC[];
+  socialFeed: NPC[];
   activeApp: PhoneApp;
   activeChatId: string | null;
   chatHistories: Record<string, Message[]>;
@@ -64,6 +65,8 @@ interface GameState {
   payDebt: (amount: number) => void;
   setActiveApp: (app: PhoneApp) => void;
   addFriend: (npc: NPC) => void;
+  generateFeed: (keep?: NPC[]) => void;
+  followNpc: (npc: NPC) => void;
   setActiveChat: (npcId: string | null) => void;
   sendMessage: (npcId: string, text: string) => boolean;
   buyItem: (item: ShopItem) => boolean;
@@ -91,6 +94,9 @@ const MAX_QUEUE = 3;
 const HAND_SIZE = 3;
 const YEARLY_FOOD_DECAY = 3;
 const EVENT_CHANCE = 0.3;
+
+// Feed sosmed
+export const FEED_SIZE = 3;
 
 // Bunga pinjaman dan stres akibat utang
 const DEBT_INTEREST = 0.2;
@@ -196,6 +202,18 @@ const drawHand = (deck: Card[], age: number, path: PathChoice): Card[] => {
   return hand;
 };
 
+/** Pilih NPC acak dari NPC_POOL yang belum jadi teman dan belum ada di `keep` */
+const pickFeed = (friends: NPC[], keep: NPC[] = []): NPC[] => {
+  const taken = new Set([...friends.map((f) => f.id), ...keep.map((k) => k.id)]);
+  const pool = NPC_POOL.filter((n) => !taken.has(n.id));
+  const result = [...keep];
+  while (result.length < FEED_SIZE && pool.length > 0) {
+    const i = Math.floor(Math.random() * pool.length);
+    result.push(pool.splice(i, 1)[0]);
+  }
+  return result.slice(0, FEED_SIZE);
+};
+
 const defaultStats = (): Stats => ({
   health: 100,
   food: 100,
@@ -225,6 +243,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   isPhoneOpen: false,
   debt: 0,
   friends: defaultFriends(),
+  socialFeed: [],
   activeApp: 'home',
   activeChatId: null,
   chatHistories: defaultChatHistories(),
@@ -247,10 +266,12 @@ export const useGameStore = create<GameState>((set, get) => ({
       isPhoneOpen: false,
       debt: 0,
       friends: defaultFriends(),
+      socialFeed: [],
       activeApp: 'home',
       activeChatId: null,
       chatHistories: defaultChatHistories(),
     });
+    get().generateFeed();
   },
 
   selectTrait: (traitId) => {
@@ -319,6 +340,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       isPhoneOpen: false,
       debt: 0,
       friends: defaultFriends(),
+      socialFeed: [],
       activeApp: 'home',
       activeChatId: null,
       chatHistories: defaultChatHistories(),
@@ -348,6 +370,22 @@ export const useGameStore = create<GameState>((set, get) => ({
         [npc.id]: chatHistories[npc.id] ?? [],
       },
     });
+  },
+
+  generateFeed: (keep = []) => {
+    const { friends } = get();
+    set({ socialFeed: pickFeed(friends, keep) });
+  },
+
+  followNpc: (npc) => {
+    const { status } = get();
+    if (status !== 'playing') return;
+
+    get().addFriend(npc);
+
+    // Hapus NPC yang di-follow, pertahankan sisanya, isi slot kosong
+    const remaining = get().socialFeed.filter((n) => n.id !== npc.id);
+    get().generateFeed(remaining);
   },
 
   setActiveChat: (npcId) => {
