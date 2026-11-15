@@ -3,13 +3,12 @@ import {
   Utensils,
   Coins,
   Brain,
-  Skull,
-  RotateCcw,
   type LucideIcon,
 } from 'lucide-react';
-import { useGameStore } from '../store/useGameStore';
+import { useGameStore, WIN_DAY } from '../store/useGameStore';
 import { SquigglyPattern } from './SquigglyPattern';
 import EventModal from './EventModal';
+import { GameOverOverlay } from './GameOverOverlay';
 import type { CardColor } from '../data/cards';
 
 interface StatConfig {
@@ -32,6 +31,7 @@ const CARD_CLASS: Record<CardColor, string> = {
   teal: 'bg-teal shadow-teal hover:shadow-teal-lg',
 };
 
+const VARIANT: Record<CardColor, 0 | 1 | 2> = { coral: 0, sunny: 1, teal: 2 };
 
 export default function GameBoard() {
   const stats = useGameStore((s) => s.stats);
@@ -39,8 +39,10 @@ export default function GameBoard() {
   const day = useGameStore((s) => s.day);
   const status = useGameStore((s) => s.status);
   const activeEvent = useGameStore((s) => s.activeEvent);
+  const activeTrait = useGameStore((s) => s.activeTrait);
   const playCard = useGameStore((s) => s.playCard);
-  const initGame = useGameStore((s) => s.initGame);
+
+  const locked = status !== 'playing' || !!activeEvent;
 
   return (
     <main className="relative flex min-h-screen flex-col bg-navy px-4 py-4 md:px-6">
@@ -48,16 +50,20 @@ export default function GameBoard() {
         <div className="mb-2 flex items-center justify-between">
           <h1 className="text-lg font-black tracking-tight">
             Plus<span className="text-sunny">62</span>Sim
+            {activeTrait && (
+              <span className="ml-2 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold uppercase">
+                {activeTrait.name}
+              </span>
+            )}
           </h1>
-          <span className="text-xs font-bold text-white/70">HARI {day}</span>
+          <span className="text-xs font-bold text-white/70">
+            HARI {day} / {WIN_DAY}
+          </span>
         </div>
 
         <div className="grid grid-cols-4 gap-2">
           {STATS.map(({ key, label, Icon, barClass }) => (
-            <div
-              key={key}
-              className="rounded-xl bg-navy-dark/60 px-2 py-1.5"
-            >
+            <div key={key} className="rounded-xl bg-navy-dark/60 px-2 py-1.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1">
                   <Icon size={14} strokeWidth={2.5} />
@@ -85,13 +91,20 @@ export default function GameBoard() {
             <button
               key={card.id}
               type="button"
-              disabled={status !== 'playing' || activeEvent !== null}
+              disabled={locked}
               onClick={() => playCard(card.id)}
               className={`group relative flex min-h-48 flex-col justify-between overflow-hidden rounded-3xl p-6 text-left text-white outline-none transition-all duration-200 ease-out hover:-translate-y-2 active:translate-y-1 disabled:opacity-50 ${CARD_CLASS[card.color]}`}
             >
-              <SquigglyPattern variant={0} />
-              <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20">
-                <Icon size={30} strokeWidth={2.5} />
+              <SquigglyPattern variant={VARIANT[card.color]} />
+              <div className="relative flex items-start justify-between">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20">
+                  <Icon size={30} strokeWidth={2.5} />
+                </div>
+                {card.type === 'curse' && (
+                  <span className="rounded-full bg-navy-dark/60 px-2 py-0.5 text-[10px] font-black uppercase">
+                    Curse
+                  </span>
+                )}
               </div>
               <div className="relative">
                 <h2 className="text-3xl font-black leading-none tracking-tight">
@@ -117,30 +130,7 @@ export default function GameBoard() {
         })}
       </section>
 
-      {status === 'lost' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-dark/90 px-6">
-          <div className="w-full max-w-md rounded-3xl bg-coral p-8 text-center shadow-coral">
-            <Skull className="mx-auto h-14 w-14" strokeWidth={2.5} />
-            <h2 className="mt-4 text-4xl font-black tracking-tight">
-              Game Over
-            </h2>
-            <p className="mt-2 text-base font-semibold text-white/85">
-              Kamu bertahan selama {day - 1} hari.
-            </p>
-            <div className="mt-6 flex flex-col gap-3">
-              <button
-                type="button"
-                onClick={initGame}
-                className="flex items-center justify-center gap-2 rounded-2xl bg-sunny px-6 py-3 font-black text-white shadow-sunny transition-all hover:-translate-y-1 hover:shadow-sunny-lg active:translate-y-1"
-              >
-                <RotateCcw size={18} strokeWidth={2.5} />
-                Main Lagi
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
+      <GameOverOverlay />
       {activeEvent && <EventModal />}
     </main>
   );
