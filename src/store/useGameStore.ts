@@ -13,10 +13,17 @@ import {
 import { TRAITS, type Trait } from '../data/traits';
 import { IBU_NPC, NPC_POOL, type NPC } from '../data/npcs';
 import { CAREERS_POOL, type Career } from '../data/careers';
+import { ASSETS } from '../data/investments';
 import type { ShopItem } from '../data/shop';
 
 export type GameStatus = 'idle' | 'playing' | 'lost';
-export type PhoneApp = 'home' | 'bank' | 'contacts' | 'social' | 'shop';
+export type PhoneApp =
+  | 'home'
+  | 'bank'
+  | 'contacts'
+  | 'social'
+  | 'shop'
+  | 'invest';
 export type PathChoice = 'none' | 'kuliah' | 'kerja';
 
 export type Message = {
@@ -53,6 +60,8 @@ interface GameState {
   activeApp: PhoneApp;
   activeChatId: string | null;
   chatHistories: Record<string, Message[]>;
+  assetPrices: Record<string, number>;
+  portfolio: Record<string, number>;
   initGame: () => void;
   selectTrait: (traitId: string) => void;
   selectCareer: (careerId: string) => void;
@@ -70,6 +79,9 @@ interface GameState {
   setActiveChat: (npcId: string | null) => void;
   sendMessage: (npcId: string, text: string) => boolean;
   buyItem: (item: ShopItem) => boolean;
+  buyAsset: (assetId: string, quantity: number) => boolean;
+  sellAsset: (assetId: string, quantity: number) => boolean;
+  updateMarketPrices: () => void;
 }
 
 export const START_AGE = 6;
@@ -106,6 +118,12 @@ const DEBT_MENTAL_PENALTY = 2;
 export const CHAT_MENTAL_GAIN = 10;
 export const CHAT_MONEY_COST = 5;
 const CHAT_REPLY_DELAY = 1000;
+
+// Pasar modal
+const STOCK_MAX_MOVE = 0.05;
+const MEME_MIN_MOVE = -0.5;
+const MEME_MAX_MOVE = 2;
+const CRASH_MENTAL_PENALTY = 50;
 
 // Beban tambahan saat kartu curse dimainkan
 const CURSE_PENALTY: Stats = {
@@ -160,6 +178,12 @@ const defaultChatHistories = (): Record<string, Message[]> => ({
     },
   ],
 });
+
+const defaultAssetPrices = (): Record<string, number> =>
+  Object.fromEntries(ASSETS.map((a) => [a.id, a.basePrice]));
+
+const defaultPortfolio = (): Record<string, number> =>
+  Object.fromEntries(ASSETS.map((a) => [a.id, 0]));
 
 const clampStat = (n: number) => Math.max(0, Math.min(100, n));
 const clampMoney = (n: number) => Math.max(0, n);
@@ -247,6 +271,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   activeApp: 'home',
   activeChatId: null,
   chatHistories: defaultChatHistories(),
+  assetPrices: defaultAssetPrices(),
+  portfolio: defaultPortfolio(),
 
   initGame: () => {
     const deck = [...STARTER_DECK];
@@ -270,6 +296,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       activeApp: 'home',
       activeChatId: null,
       chatHistories: defaultChatHistories(),
+      assetPrices: defaultAssetPrices(),
+      portfolio: defaultPortfolio(),
     });
     get().generateFeed();
   },
@@ -344,6 +372,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       activeApp: 'home',
       activeChatId: null,
       chatHistories: defaultChatHistories(),
+      assetPrices: defaultAssetPrices(),
+      portfolio: defaultPortfolio(),
     });
   },
 
@@ -478,6 +508,104 @@ export const useGameStore = create<GameState>((set, get) => ({
     return true;
   },
 
+  buyAsset: (assetId, quantity) => {
+    const { status, stats, assetPrices, portfolio } = get();
+    if (status !== 'playing') return false;
+    if (!Number.isInteger(quantity) || quantity <= 0) return false;
+    if (!ASSETS.some((a) => a.id === assetId)) return false;
+
+    const price = assetPrices[assetId] ?? 0;
+    if (price <= 0) return false;
+
+    const cost = price * quantity;
+    if (stats.money < cost) return false;
+
+    set({
+      stats: { ...stats, money: clampMoney(stats.money - cost) },
+      portfolio: {
+        ...portfolio,
+        [assetId]: (portfolio[assetId] ?? 0) + quantity,
+      },
+    });
+    return true;
+  },
+
+  sellAsset: (assetId, quantity) => {
+    const { status, stats, assetPrices, portfolio } = get();
+    if (status !== 'playing') return false;
+    if (!Number.isInteger(quantity) || quantity <= 0) return false;
+    if (!ASSETS.some((a) => a.id === assetId)) return false;
+
+    const owned = portfolio[assetId] ?? 0;
+    if (owned < quantity) return false;
+
+    const price = assetPrices[assetId] ?? 0;
+
+    set({
+      stats: { ...stats, money: clampMoney(stats.money + price * quantity) },
+      portfolio: { ...portfolio, [assetId]: owned - quantity },
+    });
+    return true;
+  },
+
+  updateMarketPrices: () => {
+    const { status, assetPrices, portfolio, stats } = get();
+    if (status !== 'playing') return;
+
+    const prices: Record<string, number> = { ...assetPrices };
+    const holdings: Record<string, number> = { ...portfolio };
+    let crashPenalty = 0;
+
+    for (const asset of ASSETS) {
+      const prev = prices[asset.id] ?? asset.basePrice;
+      let nextPrice: number;
+
+      if (prev <= 0) {
+        // Aset yang crash dilisting ulang di harga dasar
+        nextPrice = asset.basePrice;
+      } else if (asset.risk === 'safe') {
+        const move = (Math.random() * 2 - 1) * STOCK_MAX_MOVE;
+        nextPrice = Math.max(1, Math.round(prev * (1 + move)));
+      } else if (asset.risk === 'gacha') {
+        nextPrice = Math.random() < 0.5 ? prev * 2 : 0;
+      } else {
+        const move =
+          MEME_MIN_MOVE + Math.random() * (MEME_MAX_MOVE - MEME_MIN_MOVE);
+        nextPrice = Math.max(1, Math.round(prev * (1 + move)));
+      }
+
+      if (nextPrice <= 0 && prev > 0) {
+        nextPrice = 0;
+        if ((holdings[asset.id] ?? 0) > 0) {
+          crashPenalty += CRASH_MENTAL_PENALTY;
+          holdings[asset.id] = 0;
+        }
+      }
+
+      prices[asset.id] = nextPrice;
+    }
+
+    const nextStats: Stats = {
+      ...stats,
+      mental: clampStat(stats.mental - crashPenalty),
+    };
+    const dead = isDead(nextStats);
+
+    set({
+      assetPrices: prices,
+      portfolio: holdings,
+      stats: nextStats,
+      status: dead ? 'lost' : 'playing',
+      deathReason: dead
+        ? crashPenalty > 0 && nextStats.mental <= 0
+          ? 'Depresi berat setelah aset investasi anjlok jadi nol'
+          : statDeathReason(nextStats)
+        : get().deathReason,
+      activeEvent: dead ? null : get().activeEvent,
+      isPhoneOpen: dead ? false : get().isPhoneOpen,
+    });
+  },
+
   playCard: (cardId) => {
     const {
       hand,
@@ -599,6 +727,11 @@ export const useGameStore = create<GameState>((set, get) => ({
       activeEvent: event,
       isPhoneOpen: lost || awaitingPath ? false : get().isPhoneOpen,
     });
+
+    // Umur bertambah (AP habis): pasar bergerak
+    if (agedUp && !lost) {
+      get().updateMarketPrices();
+    }
   },
 
   resolveEvent: (choiceIndex) => {

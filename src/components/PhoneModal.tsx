@@ -4,6 +4,7 @@ import {
   X,
   Coins,
   TrendingDown,
+  TrendingUp,
   ChevronLeft,
   Users,
   MessageCircle,
@@ -19,6 +20,7 @@ import {
 import ChatScreen from './ChatScreen';
 import ShopApp from './ShopApp';
 import SocialApp from './SocialApp';
+import InvestApp from './InvestApp';
 
 const AMOUNT = 50;
 
@@ -28,6 +30,7 @@ const APP_TITLE: Record<PhoneApp, string> = {
   social: 'Sosmed',
   contacts: 'Kontak',
   shop: 'Shopee',
+  invest: 'Pasar Modal',
 };
 
 interface HomeApp {
@@ -48,6 +51,13 @@ const HOME_APPS: HomeApp[] = [
     Icon: ShoppingBag,
     bg: 'bg-orange-500',
     shadow: 'shadow-[0_8px_0_0_#C2410C]',
+  },
+  {
+    key: 'invest',
+    label: 'Investasi',
+    Icon: TrendingUp,
+    bg: 'bg-navy',
+    shadow: 'shadow-[0_8px_0_0_#1B2352]',
   },
 ];
 
@@ -233,6 +243,7 @@ export default function PhoneModal() {
             {activeApp === 'bank' && <BankApp />}
             {activeApp === 'social' && <SocialApp />}
             {activeApp === 'shop' && <ShopApp />}
+            {activeApp === 'invest' && <InvestApp />}
             {activeApp === 'contacts' && chatNpc && <ChatScreen npc={chatNpc} />}
             {activeApp === 'contacts' && !chatNpc && <ContactsApp />}
           </div>
