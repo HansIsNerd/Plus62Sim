@@ -11,6 +11,12 @@ import { IBU_NPC, type NPC } from '../data/npcs';
 export type GameStatus = 'idle' | 'playing' | 'won' | 'lost';
 export type PhoneApp = 'home' | 'bank' | 'contacts' | 'social';
 
+export type Message = {
+  id: string;
+  sender: 'player' | 'npc';
+  text: string;
+};
+
 export interface Stats {
   health: number;
   food: number;
@@ -31,6 +37,8 @@ interface GameState {
   debt: number;
   friends: NPC[];
   activeApp: PhoneApp;
+  activeChatId: string | null;
+  chatHistories: Record<string, Message[]>;
   initGame: () => void;
   selectTrait: (traitId: string) => void;
   reset: () => void;
@@ -41,7 +49,8 @@ interface GameState {
   payDebt: (amount: number) => void;
   setActiveApp: (app: PhoneApp) => void;
   addFriend: (npc: NPC) => void;
-  chatWithFriend: (npcId: string) => boolean;
+  setActiveChat: (npcId: string | null) => void;
+  sendMessage: (npcId: string, text: string) => boolean;
 }
 
 export const WIN_DAY = 30;
@@ -57,6 +66,7 @@ const DEBT_MENTAL_PENALTY = 2;
 // Efek chat dengan teman
 export const CHAT_MENTAL_GAIN = 10;
 export const CHAT_MONEY_COST = 5;
+const CHAT_REPLY_DELAY = 1000;
 
 // Beban tambahan saat kartu curse dimainkan
 const CURSE_PENALTY: Stats = {
@@ -65,6 +75,46 @@ const CURSE_PENALTY: Stats = {
   money: -5,
   mental: -10,
 };
+
+// Balasan hardcoded NPC
+const DEFAULT_REPLIES = [
+  'Iya, makasih sudah nanya.',
+  'Hehe, bisa aja kamu.',
+  'Wah, cerita dong lebih banyak.',
+  'Semangat ya, jangan lupa istirahat.',
+  'Oke, nanti kita ngobrol lagi.',
+];
+
+const NPC_REPLIES: Record<string, string[]> = {
+  'npc-ibu': [
+    'Iya, Nak. Ibu selalu doakan kamu.',
+    'Jaga kesehatan ya, jangan lupa makan.',
+    'Ibu bangga sama kamu, Nak.',
+    'Pulang kalau sempat ya, Ibu kangen.',
+    'Hati-hati di jalan, Nak.',
+  ],
+};
+
+const getReply = (npcId: string): string => {
+  const pool = NPC_REPLIES[npcId] ?? DEFAULT_REPLIES;
+  return pool[Math.floor(Math.random() * pool.length)];
+};
+
+let messageCounter = 0;
+const newMessageId = () => {
+  messageCounter += 1;
+  return `msg-${Date.now()}-${messageCounter}`;
+};
+
+const defaultChatHistories = (): Record<string, Message[]> => ({
+  [IBU_NPC.id]: [
+    {
+      id: newMessageId(),
+      sender: 'npc',
+      text: 'Nak, sudah makan?',
+    },
+  ],
+});
 
 const clampStat = (n: number) => Math.max(0, Math.min(100, n));
 const clampMoney = (n: number) => Math.max(0, n);
@@ -106,6 +156,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   debt: 0,
   friends: defaultFriends(),
   activeApp: 'home',
+  activeChatId: null,
+  chatHistories: defaultChatHistories(),
 
   initGame: () => {
     const deck = [...STARTER_DECK];
@@ -121,6 +173,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       debt: 0,
       friends: defaultFriends(),
       activeApp: 'home',
+      activeChatId: null,
+      chatHistories: defaultChatHistories(),
     });
   },
 
@@ -145,6 +199,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       debt: 0,
       friends: defaultFriends(),
       activeApp: 'home',
+      activeChatId: null,
+      chatHistories: defaultChatHistories(),
     });
   },
 
@@ -152,33 +208,76 @@ export const useGameStore = create<GameState>((set, get) => ({
     set((s) => ({
       isPhoneOpen: !s.isPhoneOpen,
       activeApp: 'home',
+      activeChatId: null,
     }));
   },
 
   setActiveApp: (app) => {
-    set({ activeApp: app });
+    set({ activeApp: app, activeChatId: null });
   },
 
   addFriend: (npc) => {
-    const { status, friends } = get();
+    const { status, friends, chatHistories } = get();
     if (status !== 'playing') return;
     if (friends.some((f) => f.id === npc.id)) return;
-    set({ friends: [...friends, npc] });
+    set({
+      friends: [...friends, npc],
+      chatHistories: {
+        ...chatHistories,
+        [npc.id]: chatHistories[npc.id] ?? [],
+      },
+    });
   },
 
-  chatWithFriend: (npcId) => {
+  setActiveChat: (npcId) => {
+    set({ activeChatId: npcId });
+  },
+
+  sendMessage: (npcId, text) => {
     const { status, friends, stats } = get();
+    const trimmed = text.trim();
     if (status !== 'playing') return false;
+    if (!trimmed) return false;
     if (!friends.some((f) => f.id === npcId)) return false;
     if (stats.money < CHAT_MONEY_COST) return false;
 
-    set({
+    const playerMsg: Message = {
+      id: newMessageId(),
+      sender: 'player',
+      text: trimmed,
+    };
+
+    set((s) => ({
       stats: {
-        ...stats,
-        mental: clampStat(stats.mental + CHAT_MENTAL_GAIN),
-        money: clampMoney(stats.money - CHAT_MONEY_COST),
+        ...s.stats,
+        mental: clampStat(s.stats.mental + CHAT_MENTAL_GAIN),
+        money: clampMoney(s.stats.money - CHAT_MONEY_COST),
       },
-    });
+      chatHistories: {
+        ...s.chatHistories,
+        [npcId]: [...(s.chatHistories[npcId] ?? []), playerMsg],
+      },
+    }));
+
+    window.setTimeout(() => {
+      const current = get();
+      if (current.status !== 'playing') return;
+      if (!current.friends.some((f) => f.id === npcId)) return;
+
+      const npcMsg: Message = {
+        id: newMessageId(),
+        sender: 'npc',
+        text: getReply(npcId),
+      };
+
+      set((s) => ({
+        chatHistories: {
+          ...s.chatHistories,
+          [npcId]: [...(s.chatHistories[npcId] ?? []), npcMsg],
+        },
+      }));
+    }, CHAT_REPLY_DELAY);
+
     return true;
   },
 
@@ -213,7 +312,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       activeEvent,
       debt,
     } = get();
-    
+
     if (status !== 'playing' || activeEvent) return;
 
     const card = hand.find((c) => c.id === cardId);
