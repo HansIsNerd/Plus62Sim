@@ -7,12 +7,15 @@ import {
   Leaf,
   Briefcase,
   Crown,
+  BookOpen,
+  Gamepad2,
   type LucideIcon,
 } from 'lucide-react';
 
 export type CardColor = 'coral' | 'sunny' | 'teal';
 export type CardType = 'action' | 'curse';
-export type CardTag = 'work' | 'food' | 'rest' | 'social' | 'health';
+export type CardTag = 'work' | 'food' | 'rest' | 'social' | 'health' | 'study' | 'play';
+export type LifeStage = 'child' | 'teen' | 'adult';
 
 export interface CardEffects {
   health?: number;
@@ -29,6 +32,7 @@ export interface Card {
   color: CardColor;
   type: CardType;
   tag?: CardTag;
+  stage?: LifeStage[];
   effects: CardEffects;
 }
 
@@ -40,6 +44,7 @@ export const KERJA_KERAS_CARD: Card = {
   color: 'sunny',
   type: 'action',
   tag: 'work',
+  stage: ['adult'],
   effects: { money: 30, mental: -20 },
 };
 
@@ -51,10 +56,33 @@ export const KARIR_CEMERLANG_CARD: Card = {
   color: 'sunny',
   type: 'action',
   tag: 'work',
+  stage: ['adult'],
   effects: { money: 80, mental: -40 },
 };
 
 export const STARTER_DECK: Card[] = [
+  {
+    id: 'belajar',
+    title: 'Belajar',
+    description: 'Asah otak lewat buku dan pelajaran.',
+    Icon: BookOpen,
+    color: 'sunny',
+    type: 'action',
+    tag: 'study',
+    stage: ['child', 'teen'],
+    effects: { mental: -5, food: -5, money: 5 },
+  },
+  {
+    id: 'bermain',
+    title: 'Bermain',
+    description: 'Main bareng teman sampai lupa waktu.',
+    Icon: Gamepad2,
+    color: 'coral',
+    type: 'action',
+    tag: 'play',
+    stage: ['child', 'teen'],
+    effects: { mental: 20, health: 5, food: -10 },
+  },
   {
     id: 'berburu',
     title: 'Berburu',
@@ -63,6 +91,7 @@ export const STARTER_DECK: Card[] = [
     color: 'coral',
     type: 'action',
     tag: 'food',
+    stage: ['teen', 'adult'],
     effects: { food: 25, health: -10, mental: -5 },
   },
   {
@@ -73,6 +102,7 @@ export const STARTER_DECK: Card[] = [
     color: 'teal',
     type: 'action',
     tag: 'rest',
+    stage: ['child', 'teen', 'adult'],
     effects: { health: 10, mental: 20, food: -5 },
   },
   {
@@ -83,6 +113,7 @@ export const STARTER_DECK: Card[] = [
     color: 'sunny',
     type: 'action',
     tag: 'work',
+    stage: ['adult'],
     effects: { money: 15, mental: -15, food: -5 },
   },
   {
@@ -93,6 +124,7 @@ export const STARTER_DECK: Card[] = [
     color: 'coral',
     type: 'action',
     tag: 'food',
+    stage: ['child', 'teen', 'adult'],
     effects: { food: 30, money: -5 },
   },
   {
@@ -103,6 +135,7 @@ export const STARTER_DECK: Card[] = [
     color: 'sunny',
     type: 'action',
     tag: 'social',
+    stage: ['child', 'teen', 'adult'],
     effects: { mental: 15, money: -5 },
   },
   {
@@ -113,6 +146,7 @@ export const STARTER_DECK: Card[] = [
     color: 'teal',
     type: 'action',
     tag: 'health',
+    stage: ['child', 'teen', 'adult'],
     effects: { health: 15, mental: 5, food: -5 },
   },
 ];

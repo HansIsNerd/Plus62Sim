@@ -6,7 +6,7 @@ import {
   Smartphone,
   type LucideIcon,
 } from 'lucide-react';
-import { useGameStore, WIN_DAY } from '../store/useGameStore';
+import { useGameStore, MAX_AP } from '../store/useGameStore';
 import { SquigglyPattern } from './SquigglyPattern';
 import EventModal from './EventModal';
 import PhoneModal from './PhoneModal';
@@ -37,7 +37,8 @@ const VARIANT: Record<CardColor, 0 | 1 | 2> = { coral: 0, sunny: 1, teal: 2 };
 export default function GameBoard() {
   const stats = useGameStore((s) => s.stats);
   const hand = useGameStore((s) => s.hand);
-  const day = useGameStore((s) => s.day);
+  const age = useGameStore((s) => s.age);
+  const actionPoints = useGameStore((s) => s.actionPoints);
   const status = useGameStore((s) => s.status);
   const activeEvent = useGameStore((s) => s.activeEvent);
   const activeTrait = useGameStore((s) => s.activeTrait);
@@ -46,7 +47,8 @@ export default function GameBoard() {
   const playCard = useGameStore((s) => s.playCard);
   const togglePhone = useGameStore((s) => s.togglePhone);
 
-  const locked = status !== 'playing' || !!activeEvent || isPhoneOpen;
+  const locked =
+    status !== 'playing' || !!activeEvent || isPhoneOpen || actionPoints <= 0;
 
   return (
     <main className="relative flex min-h-screen flex-col bg-navy px-4 py-4 md:px-6">
@@ -62,11 +64,14 @@ export default function GameBoard() {
           </h1>
           <div className="flex items-center gap-3">
             <span className="text-xs font-bold text-white/70">
-              HARI {day} / {WIN_DAY}
+              UMUR: {age} THN
             </span>
             <div className="flex items-center gap-1.5 text-navy font-bold text-sm bg-sunny px-3 py-1.5 rounded-xl shadow-sm">
               <Coins size={16} /> {stats.money}
             </div>
+            <span className="rounded-full border border-white/30 bg-navy px-3 py-1 text-xs font-bold text-white">
+              AP: {actionPoints}/{MAX_AP}
+            </span>
             <button
               type="button"
               onClick={togglePhone}
