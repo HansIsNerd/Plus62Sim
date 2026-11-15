@@ -4,6 +4,8 @@ import {
   Coins,
   Brain,
   Smartphone,
+  Skull,
+  RotateCcw,
   type LucideIcon,
 } from 'lucide-react';
 import { useGameStore, MAX_AP, PATH_AGE } from '../store/useGameStore';
@@ -12,7 +14,6 @@ import EventModal from './EventModal';
 import PhoneModal from './PhoneModal';
 import PathModal from './PathModal';
 import CareerModal from './CareerModal';
-import { GameOverOverlay } from './GameOverOverlay';
 import type { CardColor } from '../data/cards';
 
 interface StatConfig {
@@ -46,22 +47,30 @@ export default function GameBoard() {
   const activeTrait = useGameStore((s) => s.activeTrait);
   const career = useGameStore((s) => s.career);
   const pathChoice = useGameStore((s) => s.pathChoice);
+  const deathReason = useGameStore((s) => s.deathReason);
   const isPhoneOpen = useGameStore((s) => s.isPhoneOpen);
   const debt = useGameStore((s) => s.debt);
   const playCard = useGameStore((s) => s.playCard);
   const togglePhone = useGameStore((s) => s.togglePhone);
+  const reset = useGameStore((s) => s.reset);
+
+  const isOver = status === 'lost';
 
   const needsPath = age >= PATH_AGE && pathChoice === 'none';
   const needsCareer = pathChoice === 'kerja' && career === null;
   const blockedByChoice = needsPath || needsCareer;
 
-  // Hanya satu modal aktif pada satu waktu (prioritas: event > jalan > karir > HP)
-  const showEvent = !!activeEvent;
+  // Hanya satu modal aktif pada satu waktu (prioritas: game over > event > jalan > karir > HP)
+  const showEvent = status === 'playing' && !!activeEvent;
   const showPath = status === 'playing' && !showEvent && needsPath;
   const showCareer =
     status === 'playing' && !showEvent && !showPath && needsCareer;
   const showPhone =
-    isPhoneOpen && !showEvent && !showPath && !showCareer;
+    status === 'playing' &&
+    isPhoneOpen &&
+    !showEvent &&
+    !showPath &&
+    !showCareer;
 
   const locked =
     status !== 'playing' ||
@@ -206,11 +215,50 @@ export default function GameBoard() {
         })}
       </section>
 
-      <GameOverOverlay />
       {showEvent && <EventModal />}
       {showPath && <PathModal />}
       {showCareer && <CareerModal />}
       {showPhone && <PhoneModal />}
+
+      {isOver && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+        >
+          <div className="w-full max-w-md rounded-3xl border-4 border-navy bg-white p-8 text-center shadow-2xl">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-red-100 text-red-500">
+              <Skull size={44} strokeWidth={2.5} />
+            </div>
+
+            <h2 className="mt-5 text-5xl font-black tracking-tight text-red-500">
+              GAME OVER
+            </h2>
+
+            <p className="mt-4 text-lg font-bold text-navy">
+              Kamu hidup sampai umur {age} tahun.
+            </p>
+
+            <p className="mt-2 text-base font-semibold text-navy/70">
+              {deathReason ?? 'Meninggal dunia.'}
+            </p>
+
+            <div className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-sunny px-4 py-2 text-base font-black text-navy">
+              <Coins size={18} strokeWidth={2.5} />
+              Uang ditinggalkan: {stats.money}
+            </div>
+
+            <button
+              type="button"
+              onClick={reset}
+              className="mt-8 flex w-full items-center justify-center gap-3 rounded-2xl bg-teal px-8 py-4 text-xl font-black text-white shadow-teal outline-none transition-all hover:-translate-y-1 active:translate-y-1 active:shadow-none focus-visible:ring-4 focus-visible:ring-sunny"
+            >
+              <RotateCcw size={22} strokeWidth={2.5} />
+              Main Lagi
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

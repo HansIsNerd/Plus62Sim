@@ -14,7 +14,7 @@ import { TRAITS, type Trait } from '../data/traits';
 import { IBU_NPC, type NPC } from '../data/npcs';
 import { CAREERS_POOL, type Career } from '../data/careers';
 
-export type GameStatus = 'idle' | 'playing' | 'won' | 'lost';
+export type GameStatus = 'idle' | 'playing' | 'lost';
 export type PhoneApp = 'home' | 'bank' | 'contacts' | 'social';
 export type PathChoice = 'none' | 'kuliah' | 'kerja';
 
@@ -44,6 +44,7 @@ interface GameState {
   activeTrait: Trait | null;
   career: Career | null;
   pathChoice: PathChoice;
+  deathReason: string | null;
   isPhoneOpen: boolean;
   debt: number;
   friends: NPC[];
@@ -68,19 +69,25 @@ interface GameState {
 
 export const START_AGE = 6;
 export const MAX_AP = 3;
-export const WIN_AGE = 30;
 /** Umur pemain wajib memilih jalan hidup (Kuliah / Kerja) */
 export const PATH_AGE = 19;
 /** Umur minimum kartu "Kerja" */
 export const CAREER_AGE = 18;
-/** Tagihan muncul tiap N tahun setelah pemain mandiri */
+/** Tagihan muncul tiap N tahun setelah umur BILL_MIN_AGE */
 const BILL_AGE_INTERVAL = 2;
-/** Alias kompatibilitas untuk komponen lama yang masih meng-import WIN_DAY */
-export const WIN_DAY = WIN_AGE;
+const BILL_MIN_AGE = 19;
+
+// Kematian acak
+const OLD_AGE_START = 50;
+const OLD_AGE_CHANCE_PER_YEAR = 1.5;
+const LOW_HEALTH_THRESHOLD = 20;
+const LOW_HEALTH_CHANCE = 20;
+const CRITICAL_HEALTH_THRESHOLD = 10;
+const CRITICAL_HEALTH_CHANCE = 40;
 
 const MAX_QUEUE = 3;
 const HAND_SIZE = 3;
-const DAILY_FOOD_DECAY = 3;
+const YEARLY_FOOD_DECAY = 3;
 const EVENT_CHANCE = 0.3;
 
 // Bunga pinjaman dan stres akibat utang
@@ -145,6 +152,22 @@ const clampMoney = (n: number) => Math.max(0, n);
 
 const isDead = (s: Stats) => s.mental <= 0 || s.health <= 0 || s.food <= 0;
 
+const statDeathReason = (s: Stats): string => {
+  if (s.health <= 0) return 'Meninggal karena kesehatan habis';
+  if (s.food <= 0) return 'Meninggal karena kelaparan';
+  return 'Kehilangan semangat hidup karena mental habis';
+};
+
+const calcDeathChance = (nextAge: number, health: number): number => {
+  let chance = 0;
+  if (nextAge >= OLD_AGE_START) {
+    chance += (nextAge - OLD_AGE_START) * OLD_AGE_CHANCE_PER_YEAR;
+  }
+  if (health <= LOW_HEALTH_THRESHOLD) chance += LOW_HEALTH_CHANCE;
+  if (health <= CRITICAL_HEALTH_THRESHOLD) chance += CRITICAL_HEALTH_CHANCE;
+  return chance;
+};
+
 // < 15 = child, 15-18 = teen, >= 19: college (jika kuliah) / adult
 const getStage = (age: number, path: PathChoice): LifeStage => {
   if (age < 15) return 'child';
@@ -190,6 +213,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   activeTrait: null,
   career: null,
   pathChoice: 'none',
+  deathReason: null,
   isPhoneOpen: false,
   debt: 0,
   friends: defaultFriends(),
@@ -211,6 +235,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       activeEvent: null,
       career: null,
       pathChoice: 'none',
+      deathReason: null,
       isPhoneOpen: false,
       debt: 0,
       friends: defaultFriends(),
@@ -279,6 +304,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       activeTrait: null,
       career: null,
       pathChoice: 'none',
+      deathReason: null,
       isPhoneOpen: false,
       debt: 0,
       friends: defaultFriends(),
@@ -430,7 +456,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         stats.food +
           (effects.food ?? 0) +
           (penalty?.food ?? 0) -
-          DAILY_FOOD_DECAY,
+          YEARLY_FOOD_DECAY,
       ),
       money: clampMoney(
         stats.money + (effects.money ?? 0) + (penalty?.money ?? 0),
@@ -443,26 +469,45 @@ export const useGameStore = create<GameState>((set, get) => ({
       ),
     };
 
-    const lost = isDead(next);
+    const statsDead = isDead(next);
 
     // Kurangi AP; jika habis, umur +1 dan AP di-reset
     const apAfter = actionPoints - 1;
     const agedUp = apAfter <= 0;
     const nextAge = agedUp ? age + 1 : age;
     const nextAP = agedUp ? MAX_AP : apAfter;
-    const won = !lost && nextAge >= WIN_AGE;
+
+    // Kematian acak: dicek tiap pergantian umur
+    let randomDeath = false;
+    if (agedUp && !statsDead) {
+      const deathChance = calcDeathChance(nextAge, next.health);
+      const roll = Math.random() * 100;
+      randomDeath = deathChance > 0 && roll < deathChance;
+    }
+
+    const lost = statsDead || randomDeath;
+
+    let deathReason: string | null = null;
+    if (statsDead) {
+      deathReason = statDeathReason(next);
+    } else if (randomDeath) {
+      deathReason =
+        nextAge > OLD_AGE_START
+          ? 'Meninggal karena sakit di usia tua'
+          : 'Meninggal mendadak karena kesehatan memburuk';
+    }
 
     // Umur 19 tanpa pilihan: tahan event acak agar modal jalan hidup muncul
     const awaitingPath = nextAge >= PATH_AGE && pathChoice === 'none';
 
     let event: GameEvent | null = null;
-    if (!lost && !won && !awaitingPath) {
+    if (!lost && !awaitingPath) {
       if (
         agedUp &&
-        pathChoice !== 'none' &&
+        nextAge > BILL_MIN_AGE &&
         nextAge % BILL_AGE_INTERVAL === 0
       ) {
-        // Sudah mandiri: tagihan tiap 2 tahun
+        // Tagihan wajib tiap 2 tahun (umur > 19)
         event = BILL_EVENT;
       } else if (Math.random() < EVENT_CHANCE) {
         event = EVENTS_POOL[Math.floor(Math.random() * EVENTS_POOL.length)];
@@ -475,9 +520,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       actionPoints: nextAP,
       queue: [...queue, card].slice(-MAX_QUEUE),
       hand: drawHand(deck, nextAge, pathChoice),
-      status: lost ? 'lost' : won ? 'won' : 'playing',
+      status: lost ? 'lost' : 'playing',
+      deathReason,
       activeEvent: event,
-      isPhoneOpen: lost || won || awaitingPath ? false : get().isPhoneOpen,
+      isPhoneOpen: lost || awaitingPath ? false : get().isPhoneOpen,
     });
   },
 
@@ -499,15 +545,14 @@ export const useGameStore = create<GameState>((set, get) => ({
       ? Math.max(0, debt + choice.effects.debt)
       : debt;
 
+    const dead = isDead(next);
+
     set({
       stats: next,
       debt: nextDebt,
       activeEvent: null,
-      status: isDead(next) ? 'lost' : 'playing',
+      status: dead ? 'lost' : 'playing',
+      deathReason: dead ? statDeathReason(next) : null,
     });
   },
 }));
-// Buka akses store ke console browser untuk debugging
-if (typeof window !== 'undefined') {
-  (window as any).gameStore = useGameStore;
-}
