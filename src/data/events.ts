@@ -29,6 +29,21 @@ export const BILL_EVENT: GameEvent = {
   ],
 };
 
+export const PROMOTION_EVENT_1: GameEvent = {
+  id: 'promotion-1',
+  title: 'Naik Jabatan!',
+  description:
+    "Karena kerja kerasmu, Kartu 'Kerja' berubah menjadi 'Kerja Keras'!",
+  choices: [{ text: 'Lanjut', effects: {} }],
+};
+
+export const PROMOTION_EVENT_2: GameEvent = {
+  id: 'promotion-2',
+  title: 'Karir Puncak!',
+  description: "Kartu 'Kerja Keras' berubah menjadi 'Karir Cemerlang'!",
+  choices: [{ text: 'Lanjut', effects: {} }],
+};
+
 export const EVENTS_POOL: GameEvent[] = [
   {
     id: 'dompet',

@@ -1,10 +1,18 @@
 import { create } from 'zustand';
 import {
   STARTER_DECK,
+  KERJA_KERAS_CARD,
+  KARIR_CEMERLANG_CARD,
   type Card,
   type CardEffects,
 } from '../data/cards';
-import { EVENTS_POOL, BILL_EVENT, type GameEvent } from '../data/events';
+import {
+  EVENTS_POOL,
+  BILL_EVENT,
+  PROMOTION_EVENT_1,
+  PROMOTION_EVENT_2,
+  type GameEvent,
+} from '../data/events';
 import { TRAITS, type Trait } from '../data/traits';
 import { IBU_NPC, type NPC } from '../data/npcs';
 
@@ -31,6 +39,8 @@ interface GameState {
   deck: Card[];
   hand: Card[];
   queue: Card[];
+  discard: Card[];
+  workCount: number;
   activeEvent: GameEvent | null;
   activeTrait: Trait | null;
   isPhoneOpen: boolean;
@@ -59,6 +69,10 @@ const HAND_SIZE = 3;
 const DAILY_FOOD_DECAY = 3;
 const EVENT_CHANCE = 0.3;
 const BILL_INTERVAL = 10;
+
+// Ambang evolusi kartu karier
+const PROMOTION_1_COUNT = 5;
+const PROMOTION_2_COUNT = 10;
 
 // Bunga pinjaman dan stres akibat utang
 const DEBT_INTEREST = 0.2;
@@ -132,6 +146,10 @@ const drawHand = (deck: Card[]): Card[] => {
   return hand;
 };
 
+// Ganti semua kartu ber-id `fromId` menjadi kartu `to`
+const upgradeCards = (cards: Card[], fromId: string, to: Card): Card[] =>
+  cards.map((c) => (c.id === fromId ? { ...to } : c));
+
 const defaultStats = (): Stats => ({
   health: 100,
   food: 100,
@@ -151,6 +169,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   deck: [],
   hand: [],
   queue: [],
+  discard: [],
+  workCount: 0,
   activeEvent: null,
   activeTrait: null,
   isPhoneOpen: false,
@@ -169,6 +189,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       deck,
       hand: drawHand(deck),
       queue: [],
+      discard: [],
+      workCount: 0,
       activeEvent: null,
       isPhoneOpen: false,
       debt: 0,
@@ -194,6 +216,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       deck: [],
       hand: [],
       queue: [],
+      discard: [],
+      workCount: 0,
       activeEvent: null,
       activeTrait: null,
       isPhoneOpen: false,
@@ -308,10 +332,12 @@ export const useGameStore = create<GameState>((set, get) => ({
       stats,
       deck,
       queue,
+      discard,
       day,
       status,
       activeEvent,
       debt,
+      workCount,
     } = get();
 
     if (status !== 'playing' || activeEvent) return;
@@ -352,9 +378,37 @@ export const useGameStore = create<GameState>((set, get) => ({
     const nextDay = day + 1;
     const won = !lost && nextDay > WIN_DAY;
 
+    // Sistem karier: hitung kartu kerja yang dimainkan
+    const nextWorkCount = card.tag === 'work' ? workCount + 1 : workCount;
+
+    let nextDeck = deck;
+    let nextHandPool = hand;
+    let nextQueue: Card[] = [...queue, card];
+    let nextDiscard = discard;
+    let promotionEvent: GameEvent | null = null;
+
+    if (card.tag === 'work') {
+      if (nextWorkCount === PROMOTION_1_COUNT) {
+        nextDeck = upgradeCards(nextDeck, 'kerja', KERJA_KERAS_CARD);
+        nextHandPool = upgradeCards(nextHandPool, 'kerja', KERJA_KERAS_CARD);
+        nextQueue = upgradeCards(nextQueue, 'kerja', KERJA_KERAS_CARD);
+        nextDiscard = upgradeCards(nextDiscard, 'kerja', KERJA_KERAS_CARD);
+        promotionEvent = PROMOTION_EVENT_1;
+      } else if (nextWorkCount === PROMOTION_2_COUNT) {
+        nextDeck = upgradeCards(nextDeck, 'kerja_keras', KARIR_CEMERLANG_CARD);
+        nextHandPool = upgradeCards(nextHandPool, 'kerja_keras', KARIR_CEMERLANG_CARD);
+        nextQueue = upgradeCards(nextQueue, 'kerja_keras', KARIR_CEMERLANG_CARD);
+        nextDiscard = upgradeCards(nextDiscard, 'kerja_keras', KARIR_CEMERLANG_CARD);
+        promotionEvent = PROMOTION_EVENT_2;
+      }
+    }
+
     let event: GameEvent | null = null;
     if (!lost && !won) {
-      if (nextDay % BILL_INTERVAL === 0) {
+      if (promotionEvent) {
+        // Override: promosi dipaksa muncul, abaikan event lain
+        event = promotionEvent;
+      } else if (nextDay % BILL_INTERVAL === 0) {
         // Hari 10, 20, 30: tagihan wajib, 100% muncul
         event = BILL_EVENT;
       } else if (Math.random() < EVENT_CHANCE) {
@@ -364,9 +418,12 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     set({
       stats: next,
-      queue: [...queue, card].slice(-MAX_QUEUE),
+      deck: nextDeck,
+      discard: nextDiscard,
+      workCount: nextWorkCount,
+      queue: nextQueue.slice(-MAX_QUEUE),
       day: won ? WIN_DAY : nextDay,
-      hand: drawHand(deck),
+      hand: drawHand(nextDeck),
       status: lost ? 'lost' : won ? 'won' : 'playing',
       activeEvent: event,
       isPhoneOpen: lost || won ? false : get().isPhoneOpen,
