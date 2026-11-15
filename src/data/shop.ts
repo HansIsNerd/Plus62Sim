@@ -1,4 +1,4 @@
-import { Coffee, Pill, Utensils } from 'lucide-react';
+import { Coffee, Pill, Shirt, SprayCan, Utensils } from 'lucide-react';
 import type { Card } from './cards';
 
 export interface ShopItem {
@@ -56,6 +56,38 @@ export const SHOP_ITEMS: ShopItem[] = [
       type: 'action',
       tag: 'consumable',
       effects: { food: 40 },
+    },
+  },
+  {
+    id: 'shop-baju-branded',
+    name: 'Baju Branded',
+    description: 'Outfit mahal bikin penampilan dan percaya diri naik.',
+    price: 50,
+    card: {
+      id: 'item_baju_branded',
+      title: 'Baju Branded',
+      description: 'Pakai baju keren, percaya diri melejit.',
+      Icon: Shirt,
+      color: 'sunny',
+      type: 'action',
+      tag: 'consumable',
+      effects: { tampang: 25, mental: 10 },
+    },
+  },
+  {
+    id: 'shop-parfum-mahal',
+    name: 'Parfum Mahal',
+    description: 'Wangi semerbak, orang pun menoleh.',
+    price: 40,
+    card: {
+      id: 'item_parfum_mahal',
+      title: 'Parfum Mahal',
+      description: 'Semprot sekali, aura langsung beda.',
+      Icon: SprayCan,
+      color: 'teal',
+      type: 'action',
+      tag: 'consumable',
+      effects: { tampang: 15 },
     },
   },
 ];
