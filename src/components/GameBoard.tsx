@@ -4,6 +4,7 @@ import {
   Coins,
   Brain,
   Users,
+  Smartphone,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -13,6 +14,7 @@ import {
 } from '../store/useGameStore';
 import { SquigglyPattern } from './SquigglyPattern';
 import EventModal from './EventModal';
+import PhoneModal from './PhoneModal';
 import { GameOverOverlay } from './GameOverOverlay';
 import type { CardColor } from '../data/cards';
 
@@ -46,9 +48,12 @@ export default function GameBoard() {
   const activeEvent = useGameStore((s) => s.activeEvent);
   const activeTrait = useGameStore((s) => s.activeTrait);
   const npcRelations = useGameStore((s) => s.npcRelations);
+  const isPhoneOpen = useGameStore((s) => s.isPhoneOpen);
+  const debt = useGameStore((s) => s.debt);
   const playCard = useGameStore((s) => s.playCard);
+  const togglePhone = useGameStore((s) => s.togglePhone);
 
-  const locked = status !== 'playing' || !!activeEvent;
+  const locked = status !== 'playing' || !!activeEvent || isPhoneOpen;
   const relationEntries = Object.entries(npcRelations);
 
   return (
@@ -63,9 +68,23 @@ export default function GameBoard() {
               </span>
             )}
           </h1>
-          <span className="text-xs font-bold text-white/70">
-            HARI {day} / {WIN_DAY}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-white/70">
+              HARI {day} / {WIN_DAY}
+            </span>
+            <button
+              type="button"
+              onClick={togglePhone}
+              disabled={status !== 'playing'}
+              aria-label="Buka HP"
+              className="relative rounded-xl bg-white/20 p-2 text-white outline-none transition-colors hover:bg-white/30 focus-visible:ring-4 focus-visible:ring-sunny disabled:opacity-50"
+            >
+              <Smartphone size={18} strokeWidth={2.5} />
+              {debt > 0 && (
+                <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-coral" />
+              )}
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-4 gap-2">
@@ -176,6 +195,7 @@ export default function GameBoard() {
 
       <GameOverOverlay />
       {activeEvent && <EventModal />}
+      {isPhoneOpen && <PhoneModal />}
     </main>
   );
 }

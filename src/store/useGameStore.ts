@@ -27,11 +27,16 @@ interface GameState {
   npcRelations: Record<string, number>;
   activeEvent: GameEvent | null;
   activeTrait: Trait | null;
+  isPhoneOpen: boolean;
+  debt: number;
   initGame: () => void;
   selectTrait: (traitId: string) => void;
   reset: () => void;
   playCard: (cardId: string) => void;
   resolveEvent: (choiceIndex: number) => void;
+  togglePhone: () => void;
+  borrowMoney: (amount: number) => void;
+  payDebt: (amount: number) => void;
 }
 
 export const WIN_DAY = 30;
@@ -39,6 +44,10 @@ const MAX_QUEUE = 3;
 const HAND_SIZE = 3;
 const DAILY_FOOD_DECAY = 3;
 const EVENT_CHANCE = 0.3;
+
+// Bunga pinjaman dan stres akibat utang
+const DEBT_INTEREST = 0.2;
+const DEBT_MENTAL_PENALTY = 2;
 
 // Relasi NPC di atas ambang ini memberi bonus stats saat kartu action dimainkan
 export const NPC_BONUS_THRESHOLD = 50;
@@ -113,6 +122,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   npcRelations: defaultRelations(),
   activeEvent: null,
   activeTrait: null,
+  isPhoneOpen: false,
+  debt: 0,
 
   initGame: () => {
     const deck = [...STARTER_DECK, ...NPC_CARDS];
@@ -125,6 +136,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       queue: [],
       npcRelations: defaultRelations(),
       activeEvent: null,
+      isPhoneOpen: false,
+      debt: 0,
     });
   },
 
@@ -147,12 +160,48 @@ export const useGameStore = create<GameState>((set, get) => ({
       npcRelations: defaultRelations(),
       activeEvent: null,
       activeTrait: null,
+      isPhoneOpen: false,
+      debt: 0,
+    });
+  },
+
+  togglePhone: () => {
+    set((s) => ({ isPhoneOpen: !s.isPhoneOpen }));
+  },
+
+  borrowMoney: (amount) => {
+    const { status, stats, debt } = get();
+    if (status !== 'playing' || amount <= 0) return;
+    set({
+      stats: { ...stats, wealth: clamp(stats.wealth + amount) },
+      debt: debt + amount + amount * DEBT_INTEREST,
+    });
+  },
+
+  payDebt: (amount) => {
+    const { status, stats, debt } = get();
+    if (status !== 'playing' || amount <= 0) return;
+    if (debt <= 0 || stats.wealth < amount) return;
+    // Jangan bayar melebihi sisa utang
+    const pay = Math.min(amount, debt);
+    set({
+      stats: { ...stats, wealth: clamp(stats.wealth - pay) },
+      debt: Math.max(0, debt - pay),
     });
   },
 
   playCard: (cardId) => {
-    const { hand, stats, deck, queue, day, status, activeEvent, npcRelations } =
-      get();
+    const {
+      hand,
+      stats,
+      deck,
+      queue,
+      day,
+      status,
+      activeEvent,
+      npcRelations,
+      debt,
+    } = get();
     if (status !== 'playing' || activeEvent) return;
 
     const card = hand.find((c) => c.id === cardId);
@@ -165,6 +214,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     const effects: CardEffects = isNpc ? {} : card.effects;
     const penalty = card.type === 'curse' ? CURSE_PENALTY : null;
     const bonus: CardEffects = isAction ? npcBonus(npcRelations) : {};
+
+    // Stres karena utang
+    const debtStress = debt > 0 ? DEBT_MENTAL_PENALTY : 0;
 
     const nextRelations: Record<string, number> = { ...npcRelations };
     if (card.npcName) {
@@ -198,7 +250,8 @@ export const useGameStore = create<GameState>((set, get) => ({
         stats.mental +
           (effects.mental ?? 0) +
           (penalty?.mental ?? 0) +
-          (bonus.mental ?? 0),
+          (bonus.mental ?? 0) -
+          debtStress,
       ),
     };
 
@@ -220,6 +273,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       hand: drawHand(deck),
       status: lost ? 'lost' : won ? 'won' : 'playing',
       activeEvent: event,
+      isPhoneOpen: lost || won ? false : get().isPhoneOpen,
     });
   },
 
