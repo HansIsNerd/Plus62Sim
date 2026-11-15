@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Heart,
   Utensils,
@@ -10,6 +10,8 @@ import {
   Sparkles,
   GraduationCap,
   BookOpen,
+  Info,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 import { useGameStore, MAX_AP, PATH_AGE } from '../store/useGameStore';
@@ -75,6 +77,8 @@ export default function GameBoard() {
   const togglePhone = useGameStore((s) => s.togglePhone);
   const reset = useGameStore((s) => s.reset);
 
+  const [showTraitInfo, setShowTraitInfo] = useState(false);
+
   const logScrollRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll ke entri log terbaru
@@ -139,8 +143,21 @@ export default function GameBoard() {
           <h1 className="text-lg font-black tracking-tight">
             Plus<span className="text-sunny">62</span>Sim
             {activeTrait && (
-              <span className="ml-2 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold uppercase">
+              <span
+                role="button"
+                tabIndex={0}
+                aria-label="Lihat info trait"
+                onClick={() => setShowTraitInfo(true)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setShowTraitInfo(true);
+                  }
+                }}
+                className="ml-2 inline-flex cursor-pointer items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold uppercase outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-sunny"
+              >
                 {activeTrait.name}
+                <Info size={12} />
               </span>
             )}
           </h1>
@@ -301,6 +318,59 @@ export default function GameBoard() {
       {showCareer && <CareerModal />}
       {showMajor && <MajorModal />}
       {showPhone && <PhoneModal />}
+
+      {showTraitInfo && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setShowTraitInfo(false)}
+          className="fixed inset-0 bg-navy/60 backdrop-blur-sm z-100 flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 relative border-4 border-navy animate-phone"
+          >
+            <button
+              type="button"
+              aria-label="Tutup"
+              onClick={() => setShowTraitInfo(false)}
+              className="absolute top-4 right-4 text-navy outline-none hover:opacity-70 focus-visible:ring-4 focus-visible:ring-sunny rounded-lg"
+            >
+              <X size={20} strokeWidth={2.5} />
+            </button>
+
+            <h2 className="text-2xl font-display font-bold text-navy mb-4 text-center">
+              Takdir Hidupmu
+            </h2>
+
+            <div className="bg-sunny/20 p-3 rounded-xl mb-3 border border-sunny">
+              <h3 className="font-bold text-navy">
+                {activeTrait?.hobby.name}
+              </h3>
+              <p className="text-sm text-gray-600">
+                {activeTrait?.hobby.desc}
+              </p>
+            </div>
+
+            <div className="bg-teal/20 p-3 rounded-xl mb-4 border border-teal">
+              <h3 className="font-bold text-navy">
+                {activeTrait?.personality.name}
+              </h3>
+              <p className="text-sm text-gray-600">
+                {activeTrait?.personality.desc}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowTraitInfo(false)}
+              className="w-full bg-navy text-white font-bold py-2 rounded-xl mt-2 outline-none transition-all active:translate-y-0.5 focus-visible:ring-4 focus-visible:ring-sunny"
+            >
+              Mengerti
+            </button>
+          </div>
+        </div>
+      )}
 
       {isOver && (
         <div
