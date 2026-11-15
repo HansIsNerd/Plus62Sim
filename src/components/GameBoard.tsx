@@ -16,6 +16,7 @@ import EventModal from './EventModal';
 import PhoneModal from './PhoneModal';
 import PathModal from './PathModal';
 import CareerModal from './CareerModal';
+import MajorModal from './MajorModal';
 import type { CardColor } from '../data/cards';
 
 interface StatConfig {
@@ -50,6 +51,8 @@ export default function GameBoard() {
   const activeEvent = useGameStore((s) => s.activeEvent);
   const activeTrait = useGameStore((s) => s.activeTrait);
   const career = useGameStore((s) => s.career);
+  const major = useGameStore((s) => s.major);
+  const graduated = useGameStore((s) => s.graduated);
   const pathChoice = useGameStore((s) => s.pathChoice);
   const deathReason = useGameStore((s) => s.deathReason);
   const isPhoneOpen = useGameStore((s) => s.isPhoneOpen);
@@ -62,19 +65,27 @@ export default function GameBoard() {
 
   const needsPath = age >= PATH_AGE && pathChoice === 'none';
   const needsCareer = pathChoice === 'kerja' && career === null;
-  const blockedByChoice = needsPath || needsCareer;
+  const needsMajor = pathChoice === 'kuliah' && major === null;
+  const blockedByChoice = needsPath || needsCareer || needsMajor;
 
-  // Hanya satu modal aktif pada satu waktu (prioritas: game over > event > jalan > karir > HP)
+  // Hanya satu modal aktif pada satu waktu (prioritas: game over > event > jalan > karir > jurusan > HP)
   const showEvent = status === 'playing' && !!activeEvent;
   const showPath = status === 'playing' && !showEvent && needsPath;
   const showCareer =
     status === 'playing' && !showEvent && !showPath && needsCareer;
+  const showMajor =
+    status === 'playing' &&
+    !showEvent &&
+    !showPath &&
+    !showCareer &&
+    needsMajor;
   const showPhone =
     status === 'playing' &&
     isPhoneOpen &&
     !showEvent &&
     !showPath &&
-    !showCareer;
+    !showCareer &&
+    !showMajor;
 
   const locked =
     status !== 'playing' ||
@@ -83,14 +94,20 @@ export default function GameBoard() {
     actionPoints <= 0 ||
     blockedByChoice;
 
-  const statusLabel =
-    pathChoice === 'kuliah'
-      ? 'MAHASISWA'
-      : pathChoice === 'kerja'
-        ? `PEKERJA: ${career?.name ?? '-'}`
-        : age < PATH_AGE
-          ? 'PELAJAR'
-          : null;
+  let statusLabel: string | null = null;
+  if (pathChoice === 'kuliah') {
+    if (major && (graduated || age >= major.gradAge)) {
+      statusLabel = `KARIR: ${career?.name ?? '-'}`;
+    } else if (major) {
+      statusLabel = `MAHASISWA: ${major.name}`;
+    } else {
+      statusLabel = 'MAHASISWA';
+    }
+  } else if (pathChoice === 'kerja') {
+    statusLabel = `PEKERJA: ${career?.name ?? '-'}`;
+  } else if (age < PATH_AGE) {
+    statusLabel = 'PELAJAR';
+  }
 
   return (
     <main className="relative flex min-h-screen flex-col bg-navy px-4 py-4 md:px-6">
@@ -222,6 +239,7 @@ export default function GameBoard() {
       {showEvent && <EventModal />}
       {showPath && <PathModal />}
       {showCareer && <CareerModal />}
+      {showMajor && <MajorModal />}
       {showPhone && <PhoneModal />}
 
       {isOver && (

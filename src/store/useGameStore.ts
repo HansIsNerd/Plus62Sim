@@ -19,6 +19,7 @@ import {
 } from '../data/traits';
 import { IBU_NPC, NPC_POOL, type NPC } from '../data/npcs';
 import { CAREERS_POOL, type Career } from '../data/careers';
+import { MAJORS_POOL, type Major } from '../data/majors';
 import { ASSETS } from '../data/investments';
 import type { ShopItem } from '../data/shop';
 
@@ -66,6 +67,8 @@ interface GameState {
   activeTrait: GeneratedTrait | null;
   traitOptions: GeneratedTrait[];
   career: Career | null;
+  major: Major | null;
+  graduated: boolean;
   pathChoice: PathChoice;
   deathReason: string | null;
   isPhoneOpen: boolean;
@@ -82,6 +85,7 @@ interface GameState {
   rollTraits: () => void;
   selectTrait: (trait: GeneratedTrait) => void;
   selectCareer: (careerId: string) => void;
+  selectMajor: (majorId: string) => void;
   choosePath: (path: Exclude<PathChoice, 'none'>) => void;
   reset: () => void;
   playCard: (cardId: string) => void;
@@ -165,6 +169,15 @@ const CURSE_PENALTY: Stats = {
   iq: 0,
 };
 
+// Event kelulusan kuliah
+const GRADUATION_EVENT: GameEvent = {
+  id: 'graduation',
+  title: 'Selamat Lulus!',
+  description:
+    'Toga terpasang, skripsi tuntas. Kamu resmi lulus kuliah dan siap menapaki dunia karir sesuai jurusanmu.',
+  choices: [{ text: 'Lanjut ke Dunia Kerja', effects: { mental: 10 } }],
+};
+
 // Balasan hardcoded NPC
 const DEFAULT_REPLIES = [
   'Iya, makasih sudah nanya.',
@@ -243,16 +256,25 @@ const calcDeathChance = (nextAge: number, health: number): number => {
   return chance;
 };
 
-// < 15 = child, 15-18 = teen, >= 19: college (jika kuliah) / adult
-const getStage = (age: number, path: PathChoice): LifeStage => {
+// < 15 = child, 15-18 = teen, >= 19: college (kuliah & belum lulus) / adult
+const getStage = (
+  age: number,
+  path: PathChoice,
+  graduated: boolean,
+): LifeStage => {
   if (age < 15) return 'child';
   if (age < PATH_AGE) return 'teen';
-  if (path === 'kuliah') return 'college';
+  if (path === 'kuliah' && !graduated) return 'college';
   return 'adult';
 };
 
-const drawHand = (deck: Card[], age: number, path: PathChoice): Card[] => {
-  const stage = getStage(age, path);
+const drawHand = (
+  deck: Card[],
+  age: number,
+  path: PathChoice,
+  graduated: boolean = false,
+): Card[] => {
+  const stage = getStage(age, path, graduated);
   const eligible = deck.filter((c) => !c.stage || c.stage.includes(stage));
   const pool = eligible.length > 0 ? [...eligible] : [...deck];
   const hand: Card[] = [];
@@ -261,6 +283,22 @@ const drawHand = (deck: Card[], age: number, path: PathChoice): Card[] => {
     hand.push(pool.splice(i, 1)[0]);
   }
   return hand;
+};
+
+/** Deck dewasa setelah lulus kuliah: kartu adult + hobi + consumable yang dibawa */
+const buildAdultDeck = (
+  currentDeck: Card[],
+  trait: GeneratedTrait | null,
+): Card[] => {
+  const consumables = currentDeck.filter((c) => c.type === 'consumable');
+  const hobbyCard = trait ? getHobbyCard(trait.hobby.cardId) : undefined;
+  const hobbyForAdult =
+    hobbyCard && hobbyCard.stage?.includes('adult') ? [{ ...hobbyCard }] : [];
+  return [
+    ...STARTER_DECK.filter((c) => c.stage?.includes('adult')),
+    ...hobbyForAdult,
+    ...consumables,
+  ];
 };
 
 /** Pilih NPC acak dari NPC_POOL yang belum jadi teman dan belum ada di `keep` */
@@ -320,6 +358,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   activeTrait: null,
   traitOptions: generateTraitOptions(),
   career: null,
+  major: null,
+  graduated: false,
   pathChoice: 'none',
   deathReason: null,
   isPhoneOpen: false,
@@ -348,11 +388,13 @@ export const useGameStore = create<GameState>((set, get) => ({
       actionPoints: MAX_AP,
       stats: defaultStats(),
       deck,
-      hand: drawHand(deck, START_AGE, 'none'),
+      hand: drawHand(deck, START_AGE, 'none', false),
       queue: [],
       discard: [],
       activeEvent: null,
       career: null,
+      major: null,
+      graduated: false,
       pathChoice: 'none',
       deathReason: null,
       isPhoneOpen: false,
@@ -379,14 +421,39 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   selectCareer: (careerId) => {
-    const { status, career, pathChoice, deck, age } = get();
+    const { status, career, pathChoice, deck, age, graduated } = get();
     if (status !== 'playing' || career) return;
     if (pathChoice !== 'kerja') return;
     const picked = CAREERS_POOL.find((c) => c.id === careerId);
     if (!picked) return;
     set({
       career: picked,
-      hand: drawHand(deck, age, pathChoice),
+      hand: drawHand(deck, age, pathChoice, graduated),
+    });
+  },
+
+  selectMajor: (majorId) => {
+    const { status, pathChoice, major, stats, deck, age } = get();
+    if (status !== 'playing') return;
+    if (pathChoice !== 'kuliah' || major) return;
+    const picked = MAJORS_POOL.find((m) => m.id === majorId);
+    if (!picked) return;
+    if (stats.iq < picked.reqIq || stats.tampang < picked.reqTampang) return;
+
+    // Karir masa depan dibentuk dari data jurusan (mentalCost disimpan negatif)
+    const futureCareer: Career = {
+      id: `career-${picked.id}`,
+      name: `Lulusan ${picked.name}`,
+      description: picked.description,
+      salary: picked.salary,
+      mentalCost: -picked.mentalCost,
+    };
+
+    set({
+      major: picked,
+      career: futureCareer,
+      graduated: false,
+      hand: drawHand(deck, age, 'kuliah', false),
     });
   },
 
@@ -409,10 +476,13 @@ export const useGameStore = create<GameState>((set, get) => ({
         ...hobbyForCollege,
         ...consumables,
       ];
+      // MajorModal muncul karena pathChoice 'kuliah' dan major masih null
       set({
         pathChoice: 'kuliah',
+        major: null,
+        graduated: false,
         deck: collegeDeck,
-        hand: drawHand(collegeDeck, age, 'kuliah'),
+        hand: drawHand(collegeDeck, age, 'kuliah', false),
         activeEvent: null,
       });
       return;
@@ -421,7 +491,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     // 'kerja': CareerModal muncul karena career masih null
     set({
       pathChoice: 'kerja',
-      hand: drawHand(deck, age, 'kerja'),
+      hand: drawHand(deck, age, 'kerja', false),
       activeEvent: null,
     });
   },
@@ -439,6 +509,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       activeEvent: null,
       activeTrait: null,
       career: null,
+      major: null,
+      graduated: false,
       pathChoice: 'none',
       deathReason: null,
       isPhoneOpen: false,
@@ -706,6 +778,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       activeEvent,
       debt,
       career,
+      major,
+      graduated,
       pathChoice,
       activeTrait,
     } = get();
@@ -716,12 +790,17 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (age >= PATH_AGE && pathChoice === 'none') return;
     // Jalur kerja tanpa karir: modal karir wajib muncul dulu
     if (pathChoice === 'kerja' && career === null) return;
+    // Jalur kuliah tanpa jurusan: modal jurusan wajib muncul dulu
+    if (pathChoice === 'kuliah' && major === null) return;
 
     const card = hand.find((c) => c.id === cardId);
     if (!card) return;
 
-    // Kartu "Kerja" hanya untuk pemain di jalur kerja
-    if (card.isDynamicWork && (pathChoice !== 'kerja' || age < CAREER_AGE)) {
+    // Kartu "Kerja": jalur kerja, atau lulusan kuliah
+    const canWork =
+      (pathChoice === 'kerja' && age >= CAREER_AGE) ||
+      (pathChoice === 'kuliah' && graduated);
+    if (card.isDynamicWork && !canWork) {
       return;
     }
 
@@ -829,12 +908,27 @@ export const useGameStore = create<GameState>((set, get) => ({
           : 'Meninggal mendadak karena kesehatan memburuk';
     }
 
+    // Kelulusan kuliah: umur mencapai gradAge jurusan
+    const graduatingNow =
+      !lost &&
+      agedUp &&
+      pathChoice === 'kuliah' &&
+      major !== null &&
+      !graduated &&
+      nextAge >= major.gradAge;
+    const nextGraduated = graduated || graduatingNow;
+    const finalDeck = graduatingNow
+      ? buildAdultDeck(nextDeck, activeTrait)
+      : nextDeck;
+
     // Umur 19 tanpa pilihan: tahan event acak agar modal jalan hidup muncul
     const awaitingPath = nextAge >= PATH_AGE && pathChoice === 'none';
 
     let event: GameEvent | null = null;
     if (!lost && !awaitingPath) {
-      if (
+      if (graduatingNow) {
+        event = GRADUATION_EVENT;
+      } else if (
         agedUp &&
         nextAge > BILL_MIN_AGE &&
         nextAge % BILL_AGE_INTERVAL === 0
@@ -850,9 +944,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       stats: next,
       age: nextAge,
       actionPoints: nextAP,
-      deck: nextDeck,
+      deck: finalDeck,
+      graduated: nextGraduated,
       queue: [...queue, card].slice(-MAX_QUEUE),
-      hand: drawHand(nextDeck, nextAge, pathChoice),
+      hand: drawHand(finalDeck, nextAge, pathChoice, nextGraduated),
       status: lost ? 'lost' : 'playing',
       deathReason,
       activeEvent: event,

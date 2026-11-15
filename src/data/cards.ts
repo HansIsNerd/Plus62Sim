@@ -15,6 +15,8 @@ import {
   Scissors,
   Sparkles,
   Droplets,
+  PenLine,
+  MessagesSquare,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -112,7 +114,7 @@ export const HOBBY_CARDS: Card[] = [
     type: 'action',
     tag: 'study',
     stage: ['child', 'teen', 'college'],
-    effects: { iq: 15, mental: -10 },
+    effects: { iq: 15, mental: -10, money: 20 },
   },
 ];
 
@@ -152,6 +154,28 @@ export const STARTER_DECK: Card[] = [
     tag: 'study',
     stage: ['college'],
     effects: { mental: -15, food: -5, money: 0 },
+  },
+  {
+    id: 'nugas',
+    title: 'Nugas',
+    description: 'Kerjain tugas kuliah sampai deadline mepet.',
+    Icon: PenLine,
+    color: 'sunny',
+    type: 'action',
+    tag: 'study',
+    stage: ['college'],
+    effects: { iq: 10, mental: -10, food: -5 },
+  },
+  {
+    id: 'bimbingan',
+    title: 'Bimbingan',
+    description: 'Konsultasi dengan dosen, revisi tiada akhir.',
+    Icon: MessagesSquare,
+    color: 'teal',
+    type: 'action',
+    tag: 'study',
+    stage: ['college'],
+    effects: { iq: 15, mental: -15, money: -10 },
   },
   {
     id: 'berburu',
