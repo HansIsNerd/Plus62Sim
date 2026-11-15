@@ -103,6 +103,8 @@ interface GameState {
   buyAsset: (assetId: string, quantity: number) => boolean;
   sellAsset: (assetId: string, quantity: number) => boolean;
   updateMarketPrices: () => void;
+  /** DEBUG: lompat ke umur tertentu tanpa merusak state lain */
+  debugSetAge: (newAge: number) => void;
 }
 
 export const START_AGE = 6;
@@ -345,6 +347,13 @@ const defaultStats = (): Stats => ({
 
 const defaultFriends = (): NPC[] => [{ ...IBU_NPC }];
 
+/** Stage berdasarkan umur saja (untuk debug): <15 child, 15-18 teen, >=19 adult */
+const getStageByAge = (age: number): LifeStage => {
+  if (age < 15) return 'child';
+  if (age < PATH_AGE) return 'teen';
+  return 'adult';
+};
+
 export const useGameStore = create<GameState>((set, get) => ({
   status: 'idle',
   age: START_AGE,
@@ -525,6 +534,46 @@ export const useGameStore = create<GameState>((set, get) => ({
       priceHistory: defaultPriceHistory(),
     });
     get().rollTraits();
+  },
+
+  debugSetAge: (newAge) => {
+    const { status, deck, activeTrait } = get();
+    if (status !== 'playing') return;
+    if (!Number.isFinite(newAge)) return;
+
+    const age = Math.max(0, Math.floor(newAge));
+    const stage = getStageByAge(age);
+
+    // Path direset ke 'none': umur >= 19 akan memunculkan PathModal lagi.
+    // Karir/jurusan direset agar bisa dipilih ulang.
+    const pathChoice: PathChoice = 'none';
+
+    // Deck dipulihkan sesuai stage baru (consumable toko tetap dibawa)
+    const consumables = deck.filter((c) => c.type === 'consumable');
+    const hobbyCard = activeTrait
+      ? getHobbyCard(activeTrait.hobby.cardId)
+      : undefined;
+    const hobbyForStage =
+      hobbyCard && hobbyCard.stage?.includes(stage) ? [{ ...hobbyCard }] : [];
+    const stageDeck: Card[] = [
+      ...STARTER_DECK.filter((c) => c.stage?.includes(stage)),
+      ...hobbyForStage,
+      ...consumables,
+    ];
+    const nextDeck = stageDeck.length > 0 ? stageDeck : deck;
+
+    set({
+      age,
+      actionPoints: MAX_AP,
+      deck: nextDeck,
+      hand: drawHand(nextDeck, age, pathChoice, false),
+      activeEvent: null,
+      pathChoice,
+      career: null,
+      major: null,
+      graduated: false,
+      isPhoneOpen: false,
+    });
   },
 
   togglePhone: () => {
@@ -991,3 +1040,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
   },
 }));
+
+if (typeof window !== 'undefined') {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).useGameStore = useGameStore;
+}
