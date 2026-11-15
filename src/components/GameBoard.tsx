@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import {
   Heart,
   Utensils,
@@ -8,6 +9,7 @@ import {
   RotateCcw,
   Sparkles,
   GraduationCap,
+  BookOpen,
   type LucideIcon,
 } from 'lucide-react';
 import { useGameStore, MAX_AP, PATH_AGE } from '../store/useGameStore';
@@ -42,6 +44,17 @@ const CARD_CLASS: Record<CardColor, string> = {
 
 const VARIANT: Record<CardColor, 0 | 1 | 2> = { coral: 0, sunny: 1, teal: 2 };
 
+/** Warna border log: teal jika ada efek positif, coral jika negatif, putih redup jika netral */
+function logBorderClass(delta: string): string {
+  if (!delta) return 'border-white/20';
+  const hasPositive = /\+\d/.test(delta);
+  const hasNegative = /\s-\d/.test(delta);
+  if (hasPositive && !hasNegative) return 'border-teal';
+  if (hasNegative && !hasPositive) return 'border-coral';
+  if (hasPositive && hasNegative) return 'border-sunny';
+  return 'border-white/20';
+}
+
 export default function GameBoard() {
   const stats = useGameStore((s) => s.stats);
   const hand = useGameStore((s) => s.hand);
@@ -57,9 +70,19 @@ export default function GameBoard() {
   const deathReason = useGameStore((s) => s.deathReason);
   const isPhoneOpen = useGameStore((s) => s.isPhoneOpen);
   const debt = useGameStore((s) => s.debt);
+  const logs = useGameStore((s) => s.logs);
   const playCard = useGameStore((s) => s.playCard);
   const togglePhone = useGameStore((s) => s.togglePhone);
   const reset = useGameStore((s) => s.reset);
+
+  const logScrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll ke entri log terbaru
+  useEffect(() => {
+    const el = logScrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+  }, [logs.length]);
 
   const isOver = status === 'lost';
 
@@ -178,7 +201,7 @@ export default function GameBoard() {
         </div>
       </header>
 
-      <section className="mx-auto mt-8 grid w-full max-w-5xl flex-1 grid-cols-1 content-center gap-6 pb-6 md:grid-cols-3">
+      <section className="mx-auto mt-8 grid w-full max-w-5xl grid-cols-1 content-center gap-6 pb-2 md:grid-cols-3">
         {hand.map((card) => {
           const { Icon } = card;
           const effectEntries: [string, number][] = (
@@ -235,6 +258,43 @@ export default function GameBoard() {
           );
         })}
       </section>
+
+      {/* LIFE CHRONICLE */}
+      <div className="w-full max-w-4xl mx-auto mt-6 bg-navy/30 backdrop-blur-md border border-white/10 rounded-2xl p-4 h-48 flex flex-col overflow-hidden shadow-xl">
+        <div className="flex items-center gap-2 text-white/50 text-xs font-bold tracking-widest">
+          <BookOpen size={14} strokeWidth={2.5} />
+          LIFE CHRONICLE
+        </div>
+        <div
+          ref={logScrollRef}
+          className="flex-1 overflow-y-auto flex flex-col gap-2 mt-2 pr-2 scrollbar-thin"
+        >
+          {logs.length === 0 ? (
+            <p className="text-xs font-semibold text-white/40">
+              Belum ada catatan. Mainkan sebuah kartu untuk memulai kisahmu.
+            </p>
+          ) : (
+            logs.map((log) => (
+              <div
+                key={log.id}
+                className={`flex flex-col text-sm border-l-2 pl-3 py-1 ${logBorderClass(log.delta)}`}
+              >
+                <span className="text-xs text-white/50 font-semibold">
+                  Tahun {log.age}
+                </span>
+                <span className="text-white/90">{log.text}</span>
+                {log.delta && (
+                  <span className="text-xs font-mono text-teal-300">
+                    {log.delta}
+                  </span>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div className="pb-6" />
 
       {showEvent && <EventModal />}
       {showPath && <PathModal />}

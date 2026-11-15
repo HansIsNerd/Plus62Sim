@@ -39,6 +39,13 @@ export type Message = {
   text: string;
 };
 
+export interface LogEntry {
+  id: string;
+  age: number;
+  text: string; // e.g., "Memainkan Makan"
+  delta: string; // e.g., "Food +35, Money -10"
+}
+
 export interface Stats {
   health: number;
   food: number;
@@ -81,6 +88,7 @@ interface GameState {
   assetPrices: Record<string, number>;
   portfolio: Record<string, number>;
   priceHistory: Record<string, number[]>;
+  logs: LogEntry[];
   initGame: () => void;
   rollTraits: () => void;
   selectTrait: (trait: GeneratedTrait) => void;
@@ -103,6 +111,7 @@ interface GameState {
   buyAsset: (assetId: string, quantity: number) => boolean;
   sellAsset: (assetId: string, quantity: number) => boolean;
   updateMarketPrices: () => void;
+  addLog: (text: string, delta: string) => void;
   /** DEBUG: lompat ke umur tertentu tanpa merusak state lain */
   debugSetAge: (newAge: number) => void;
 }
@@ -161,6 +170,9 @@ const CRASH_MENTAL_PENALTY = 50;
 const HISTORY_MAX = 10;
 const HISTORY_INITIAL = 5;
 
+// Batas log agar memori tidak membengkak
+const LOG_MAX = 200;
+
 // Beban tambahan saat kartu curse dimainkan
 const CURSE_PENALTY: Stats = {
   health: -5,
@@ -216,6 +228,12 @@ const newItemCardId = (baseId: string) => {
   return `${baseId}-${Date.now()}-${itemCounter}`;
 };
 
+let logCounter = 0;
+const newLogId = () => {
+  logCounter += 1;
+  return `log-${Date.now()}-${logCounter}`;
+};
+
 const defaultChatHistories = (): Record<string, Message[]> => ({
   [IBU_NPC.id]: [
     {
@@ -246,6 +264,26 @@ const statDeathReason = (s: Stats): string => {
   if (s.health <= 0) return 'Meninggal karena kesehatan habis';
   if (s.food <= 0) return 'Meninggal karena kelaparan';
   return 'Kehilangan semangat hidup karena mental habis';
+};
+
+/** Format selisih stats, mis. "Food +35, Money -10". Stat tanpa perubahan dilewati. */
+const DELTA_LABELS: [keyof Stats, string][] = [
+  ['health', 'Health'],
+  ['food', 'Food'],
+  ['money', 'Money'],
+  ['mental', 'Mental'],
+  ['tampang', 'Tampang'],
+  ['iq', 'IQ'],
+];
+
+const formatDelta = (before: Stats, after: Stats): string => {
+  const parts: string[] = [];
+  for (const [key, label] of DELTA_LABELS) {
+    const delta = Math.round((after[key] - before[key]) * 100) / 100;
+    if (delta === 0) continue;
+    parts.push(delta > 0 ? `${label} +${delta}` : `${label} ${delta}`);
+  }
+  return parts.join(', ');
 };
 
 const calcDeathChance = (nextAge: number, health: number): number => {
@@ -381,6 +419,22 @@ export const useGameStore = create<GameState>((set, get) => ({
   assetPrices: defaultAssetPrices(),
   portfolio: defaultPortfolio(),
   priceHistory: defaultPriceHistory(),
+  logs: [],
+
+  addLog: (text, delta) => {
+    set((s) => {
+      const entry: LogEntry = {
+        id: newLogId(),
+        age: s.age,
+        text,
+        delta,
+      };
+      const next = [...s.logs, entry];
+      return {
+        logs: next.length > LOG_MAX ? next.slice(next.length - LOG_MAX) : next,
+      };
+    });
+  },
 
   initGame: () => {
     // Kartu eksklusif hobi masuk ke deck awal
@@ -416,6 +470,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       assetPrices: defaultAssetPrices(),
       portfolio: defaultPortfolio(),
       priceHistory: defaultPriceHistory(),
+      logs: [],
     });
     get().generateFeed();
   },
@@ -532,6 +587,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       assetPrices: defaultAssetPrices(),
       portfolio: defaultPortfolio(),
       priceHistory: defaultPriceHistory(),
+      logs: [],
     });
     get().rollTraits();
   },
@@ -813,6 +869,13 @@ export const useGameStore = create<GameState>((set, get) => ({
       activeEvent: dead ? null : get().activeEvent,
       isPhoneOpen: dead ? false : get().isPhoneOpen,
     });
+
+    if (crashPenalty > 0) {
+      get().addLog(
+        'Aset investasi anjlok jadi nol',
+        formatDelta(stats, nextStats),
+      );
+    }
   },
 
   playCard: (cardId) => {
@@ -989,6 +1052,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
     }
 
+    // Log aksi kartu (dicatat di umur saat kartu dimainkan, sebelum umur naik)
+    get().addLog('Memainkan ' + card.title, formatDelta(stats, next));
+
     set({
       stats: next,
       age: nextAge,
@@ -1002,6 +1068,11 @@ export const useGameStore = create<GameState>((set, get) => ({
       activeEvent: event,
       isPhoneOpen: lost || awaitingPath ? false : get().isPhoneOpen,
     });
+
+    // Log ulang tahun (umur sudah naik, tercatat di umur baru)
+    if (agedUp) {
+      get().addLog('Selamat Ulang Tahun ke-' + nextAge, '');
+    }
 
     // Umur bertambah (AP habis): pasar bergerak
     if (agedUp && !lost) {
@@ -1030,6 +1101,15 @@ export const useGameStore = create<GameState>((set, get) => ({
     const nextDebt = effects.debt ? Math.max(0, debt + effects.debt) : debt;
 
     const dead = isDead(next);
+
+    // Log event: selisih stats, plus utang bila berubah
+    let eventDelta = formatDelta(stats, next);
+    const debtDelta = nextDebt - debt;
+    if (debtDelta !== 0) {
+      const debtText = debtDelta > 0 ? `Utang +${debtDelta}` : `Utang ${debtDelta}`;
+      eventDelta = eventDelta ? `${eventDelta}, ${debtText}` : debtText;
+    }
+    get().addLog('Event: ' + activeEvent.title, eventDelta);
 
     set({
       stats: next,
