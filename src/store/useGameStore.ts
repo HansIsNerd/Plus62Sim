@@ -4,7 +4,7 @@ import {
   type Card,
   type CardEffects,
 } from '../data/cards';
-import { EVENTS_POOL, type GameEvent } from '../data/events';
+import { EVENTS_POOL, BILL_EVENT, type GameEvent } from '../data/events';
 import { TRAITS, type Trait } from '../data/traits';
 import { IBU_NPC, type NPC } from '../data/npcs';
 
@@ -58,6 +58,7 @@ const MAX_QUEUE = 3;
 const HAND_SIZE = 3;
 const DAILY_FOOD_DECAY = 3;
 const EVENT_CHANCE = 0.3;
+const BILL_INTERVAL = 10;
 
 // Bunga pinjaman dan stres akibat utang
 const DEBT_INTEREST = 0.2;
@@ -352,8 +353,13 @@ export const useGameStore = create<GameState>((set, get) => ({
     const won = !lost && nextDay > WIN_DAY;
 
     let event: GameEvent | null = null;
-    if (!lost && !won && Math.random() < EVENT_CHANCE) {
-      event = EVENTS_POOL[Math.floor(Math.random() * EVENTS_POOL.length)];
+    if (!lost && !won) {
+      if (nextDay % BILL_INTERVAL === 0) {
+        // Hari 10, 20, 30: tagihan wajib, 100% muncul
+        event = BILL_EVENT;
+      } else if (Math.random() < EVENT_CHANCE) {
+        event = EVENTS_POOL[Math.floor(Math.random() * EVENTS_POOL.length)];
+      }
     }
 
     set({
@@ -368,7 +374,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   resolveEvent: (choiceIndex) => {
-    const { activeEvent, stats, status } = get();
+    const { activeEvent, stats, status, debt } = get();
     if (!activeEvent || status !== 'playing') return;
 
     const choice = activeEvent.choices[choiceIndex];
@@ -381,8 +387,13 @@ export const useGameStore = create<GameState>((set, get) => ({
       mental: clampStat(stats.mental + (choice.effects.mental ?? 0)),
     };
 
+    const nextDebt = choice.effects.debt
+      ? Math.max(0, debt + choice.effects.debt)
+      : debt;
+
     set({
       stats: next,
+      debt: nextDebt,
       activeEvent: null,
       status: isDead(next) ? 'lost' : 'playing',
     });

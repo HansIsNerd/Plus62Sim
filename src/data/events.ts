@@ -3,6 +3,7 @@ export interface EventEffects {
   food?: number;
   money?: number;
   mental?: number;
+  debt?: number;
 }
 
 export interface EventChoice {
@@ -16,6 +17,17 @@ export interface GameEvent {
   description: string;
   choices: EventChoice[];
 }
+
+export const BILL_EVENT: GameEvent = {
+  id: 'bill',
+  title: 'Tagihan Kos & Listrik',
+  description:
+    'Pemilik kos menagih uang sewa dan listrik bulan ini. Kamu wajib membayar Rp 100.',
+  choices: [
+    { text: 'Bayar Rp 100', effects: { money: -100 } },
+    { text: 'Kabur (Utang +120, Mental -30)', effects: { mental: -30, debt: 120 } },
+  ],
+};
 
 export const EVENTS_POOL: GameEvent[] = [
   {
