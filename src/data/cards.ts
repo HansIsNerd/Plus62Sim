@@ -10,6 +10,8 @@ import {
   BookOpen,
   Gamepad2,
   GraduationCap,
+  Dumbbell,
+  Library,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -23,6 +25,7 @@ export type CardTag =
   | 'health'
   | 'study'
   | 'play'
+  | 'fun'
   | 'consumable';
 export type LifeStage = 'child' | 'teen' | 'college' | 'adult';
 
@@ -73,6 +76,46 @@ export const KARIR_CEMERLANG_CARD: Card = {
   effects: { money: 80, mental: -40 },
 };
 
+/** Kartu eksklusif Hobi: hanya masuk deck jika hobi terpilih saat gacha */
+export const HOBBY_CARDS: Card[] = [
+  {
+    id: 'main_game',
+    title: 'Main Game',
+    description: 'Push rank dulu, dunia nyata belakangan.',
+    Icon: Gamepad2,
+    color: 'coral',
+    type: 'action',
+    tag: 'fun',
+    stage: ['child', 'teen', 'college', 'adult'],
+    effects: { mental: 20, iq: 5, money: -10 },
+  },
+  {
+    id: 'olahraga',
+    title: 'Olahraga',
+    description: 'Keringat keluar, badan dan mood naik.',
+    Icon: Dumbbell,
+    color: 'teal',
+    type: 'action',
+    tag: 'health',
+    stage: ['child', 'teen', 'college', 'adult'],
+    effects: { health: 20, mental: 5, tampang: 10 },
+  },
+  {
+    id: 'belajar_ekstra',
+    title: 'Belajar Ekstra',
+    description: 'Lahap buku sampai larut malam.',
+    Icon: Library,
+    color: 'sunny',
+    type: 'action',
+    tag: 'study',
+    stage: ['child', 'teen', 'college'],
+    effects: { iq: 15, mental: -10 },
+  },
+];
+
+export const getHobbyCard = (cardId: string): Card | undefined =>
+  HOBBY_CARDS.find((c) => c.id === cardId);
+
 export const STARTER_DECK: Card[] = [
   {
     id: 'belajar',
@@ -106,17 +149,6 @@ export const STARTER_DECK: Card[] = [
     tag: 'study',
     stage: ['college'],
     effects: { mental: -15, food: -5, money: 0 },
-  },
-  {
-    id: 'main_game',
-    title: 'Main Game',
-    description: 'Push rank dulu, tugas belakangan.',
-    Icon: Gamepad2,
-    color: 'coral',
-    type: 'action',
-    tag: 'play',
-    stage: ['college'],
-    effects: { mental: 20, money: -10 },
   },
   {
     id: 'berburu',

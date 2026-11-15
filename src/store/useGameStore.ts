@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import {
   STARTER_DECK,
+  getHobbyCard,
   type Card,
   type CardEffects,
   type LifeStage,
@@ -11,7 +12,11 @@ import {
   type EventEffects,
   type GameEvent,
 } from '../data/events';
-import { TRAITS, type Trait } from '../data/traits';
+import {
+  HOBBIES,
+  PERSONALITIES,
+  type GeneratedTrait,
+} from '../data/traits';
 import { IBU_NPC, NPC_POOL, type NPC } from '../data/npcs';
 import { CAREERS_POOL, type Career } from '../data/careers';
 import { ASSETS } from '../data/investments';
@@ -58,7 +63,8 @@ interface GameState {
   queue: Card[];
   discard: Card[];
   activeEvent: GameEvent | null;
-  activeTrait: Trait | null;
+  activeTrait: GeneratedTrait | null;
+  traitOptions: GeneratedTrait[];
   career: Career | null;
   pathChoice: PathChoice;
   deathReason: string | null;
@@ -73,7 +79,8 @@ interface GameState {
   portfolio: Record<string, number>;
   priceHistory: Record<string, number[]>;
   initGame: () => void;
-  selectTrait: (traitId: string) => void;
+  rollTraits: () => void;
+  selectTrait: (trait: GeneratedTrait) => void;
   selectCareer: (careerId: string) => void;
   choosePath: (path: Exclude<PathChoice, 'none'>) => void;
   reset: () => void;
@@ -116,6 +123,17 @@ const MAX_QUEUE = 3;
 const HAND_SIZE = 3;
 const YEARLY_FOOD_DECAY = 3;
 const EVENT_CHANCE = 0.3;
+
+// Gacha trait
+export const TRAIT_OPTION_COUNT = 3;
+
+// Passive kepribadian
+const INTROVERT_REST_MULTIPLIER = 2;
+const INTROVERT_SOCIAL_PENALTY = 10;
+const EXTROVERT_SOCIAL_MULTIPLIER = 2;
+const EXTROVERT_REST_PENALTY = 10;
+const AMBIS_WORK_MONEY_MULTIPLIER = 1.5;
+const AMBIS_AGE_HEALTH_PENALTY = 5;
 
 // Feed sosmed
 export const FEED_SIZE = 3;
@@ -257,6 +275,27 @@ const pickFeed = (friends: NPC[], keep: NPC[] = []): NPC[] => {
   return result.slice(0, FEED_SIZE);
 };
 
+/** Buat N kombinasi unik Hobi x Kepribadian secara acak */
+const generateTraitOptions = (count: number = TRAIT_OPTION_COUNT): GeneratedTrait[] => {
+  const combos: GeneratedTrait[] = [];
+  for (const hobby of HOBBIES) {
+    for (const personality of PERSONALITIES) {
+      combos.push({
+        id: `${hobby.id}-${personality.id}`,
+        name: `${hobby.name} ${personality.name}`,
+        hobby,
+        personality,
+      });
+    }
+  }
+  const result: GeneratedTrait[] = [];
+  while (result.length < count && combos.length > 0) {
+    const i = Math.floor(Math.random() * combos.length);
+    result.push(combos.splice(i, 1)[0]);
+  }
+  return result;
+};
+
 const defaultStats = (): Stats => ({
   health: 100,
   food: 100,
@@ -265,9 +304,6 @@ const defaultStats = (): Stats => ({
   tampang: 50,
   iq: 50,
 });
-
-const statsFromTrait = (trait: Trait | null): Stats =>
-  trait ? { ...defaultStats(), ...trait.startStats } : defaultStats();
 
 const defaultFriends = (): NPC[] => [{ ...IBU_NPC }];
 
@@ -282,6 +318,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   discard: [],
   activeEvent: null,
   activeTrait: null,
+  traitOptions: generateTraitOptions(),
   career: null,
   pathChoice: 'none',
   deathReason: null,
@@ -297,12 +334,19 @@ export const useGameStore = create<GameState>((set, get) => ({
   priceHistory: defaultPriceHistory(),
 
   initGame: () => {
-    const deck = [...STARTER_DECK];
+    // Kartu eksklusif hobi masuk ke deck awal
+    const hobbyCard = get().activeTrait
+      ? getHobbyCard(get().activeTrait!.hobby.cardId)
+      : undefined;
+    const deck: Card[] = hobbyCard
+      ? [...STARTER_DECK, { ...hobbyCard }]
+      : [...STARTER_DECK];
+
     set({
       status: 'playing',
       age: START_AGE,
       actionPoints: MAX_AP,
-      stats: statsFromTrait(get().activeTrait),
+      stats: defaultStats(),
       deck,
       hand: drawHand(deck, START_AGE, 'none'),
       queue: [],
@@ -325,9 +369,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     get().generateFeed();
   },
 
-  selectTrait: (traitId) => {
-    const trait = TRAITS.find((t) => t.id === traitId);
-    if (!trait) return;
+  rollTraits: () => {
+    set({ traitOptions: generateTraitOptions() });
+  },
+
+  selectTrait: (trait) => {
     set({ activeTrait: trait });
     get().initGame();
   },
@@ -345,15 +391,22 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   choosePath: (path) => {
-    const { status, pathChoice, age, deck } = get();
+    const { status, pathChoice, age, deck, activeTrait } = get();
     if (status !== 'playing' || pathChoice !== 'none') return;
     if (age < PATH_AGE) return;
 
     if (path === 'kuliah') {
       // Item consumable dari toko tetap dibawa ke deck kuliah
       const consumables = deck.filter((c) => c.type === 'consumable');
+      // Kartu hobi tetap dibawa jika valid untuk stage kuliah
+      const hobbyCard = activeTrait
+        ? getHobbyCard(activeTrait.hobby.cardId)
+        : undefined;
+      const hobbyForCollege =
+        hobbyCard && hobbyCard.stage?.includes('college') ? [{ ...hobbyCard }] : [];
       const collegeDeck = [
         ...STARTER_DECK.filter((c) => c.stage?.includes('college')),
+        ...hobbyForCollege,
         ...consumables,
       ];
       set({
@@ -399,6 +452,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       portfolio: defaultPortfolio(),
       priceHistory: defaultPriceHistory(),
     });
+    get().rollTraits();
   },
 
   togglePhone: () => {
@@ -653,6 +707,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       debt,
       career,
       pathChoice,
+      activeTrait,
     } = get();
 
     if (status !== 'playing' || activeEvent) return;
@@ -677,9 +732,49 @@ export const useGameStore = create<GameState>((set, get) => ({
     const penalty = card.type === 'curse' ? CURSE_PENALTY : null;
     const debtStress = debt > 0 ? DEBT_MENTAL_PENALTY : 0;
 
+    // Kurangi AP; jika habis, umur +1 dan AP di-reset
+    const apAfter = actionPoints - 1;
+    const agedUp = apAfter <= 0;
+    const nextAge = agedUp ? age + 1 : age;
+    const nextAP = agedUp ? MAX_AP : apAfter;
+
+    // Passive kepribadian (bonus/penalti tambahan di atas efek dasar kartu)
+    const personalityId = activeTrait?.personality.id;
+    let personalityMental = 0;
+    let personalityMoney = 0;
+    let personalityHealth = 0;
+
+    if (personalityId === 'introvert') {
+      if (card.tag === 'rest') {
+        personalityMental +=
+          (effects.mental ?? 0) * (INTROVERT_REST_MULTIPLIER - 1);
+      } else if (card.tag === 'social') {
+        personalityMental -= INTROVERT_SOCIAL_PENALTY;
+      }
+    } else if (personalityId === 'ekstrovert') {
+      if (card.tag === 'social') {
+        personalityMental +=
+          (effects.mental ?? 0) * (EXTROVERT_SOCIAL_MULTIPLIER - 1);
+      } else if (card.tag === 'rest') {
+        personalityMental -= EXTROVERT_REST_PENALTY;
+      }
+    } else if (personalityId === 'ambis') {
+      if (card.tag === 'work') {
+        personalityMoney += Math.floor(
+          (effects.money ?? 0) * (AMBIS_WORK_MONEY_MULTIPLIER - 1),
+        );
+      }
+      if (agedUp) {
+        personalityHealth -= AMBIS_AGE_HEALTH_PENALTY;
+      }
+    }
+
     const next: Stats = {
       health: clampStat(
-        stats.health + (effects.health ?? 0) + (penalty?.health ?? 0),
+        stats.health +
+          (effects.health ?? 0) +
+          (penalty?.health ?? 0) +
+          personalityHealth,
       ),
       food: clampStat(
         stats.food +
@@ -688,12 +783,16 @@ export const useGameStore = create<GameState>((set, get) => ({
           YEARLY_FOOD_DECAY,
       ),
       money: clampMoney(
-        stats.money + (effects.money ?? 0) + (penalty?.money ?? 0),
+        stats.money +
+          (effects.money ?? 0) +
+          (penalty?.money ?? 0) +
+          personalityMoney,
       ),
       mental: clampStat(
         stats.mental +
           (effects.mental ?? 0) +
-          (penalty?.mental ?? 0) -
+          (penalty?.mental ?? 0) +
+          personalityMental -
           debtStress,
       ),
       tampang: clampStat(
@@ -709,12 +808,6 @@ export const useGameStore = create<GameState>((set, get) => ({
       card.type === 'consumable'
         ? deck.filter((c) => c.id !== card.id)
         : deck;
-
-    // Kurangi AP; jika habis, umur +1 dan AP di-reset
-    const apAfter = actionPoints - 1;
-    const agedUp = apAfter <= 0;
-    const nextAge = agedUp ? age + 1 : age;
-    const nextAP = agedUp ? MAX_AP : apAfter;
 
     // Kematian acak: dicek tiap pergantian umur
     let randomDeath = false;
