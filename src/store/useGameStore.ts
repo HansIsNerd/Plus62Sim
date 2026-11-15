@@ -42,7 +42,7 @@ export type Message = {
 export interface LogEntry {
   id: string;
   age: number;
-  text: string; // e.g., "Memainkan Makan"
+  text: string; // e.g., "Kamu bekerja keras seharian."
   delta: string; // e.g., "Food +35, Money -10"
 }
 
@@ -214,6 +214,50 @@ const NPC_REPLIES: Record<string, string[]> = {
 const getReply = (npcId: string): string => {
   const pool = NPC_REPLIES[npcId] ?? DEFAULT_REPLIES;
   return pool[Math.floor(Math.random() * pool.length)];
+};
+
+/** Narasi log bergaya BitLife berdasarkan kartu, trait, dan teman */
+const generateNarrative = (
+  card: Card,
+  activeTrait: GeneratedTrait | null,
+  friends: NPC[],
+): string => {
+  const pickFriendName = (): string => {
+    if (friends.length === 0) return 'teman-temanmu';
+    return friends[Math.floor(Math.random() * friends.length)].name;
+  };
+
+  const isIntrovert = activeTrait?.personality.id === 'introvert';
+  const isExtrovert = activeTrait?.personality.id === 'ekstrovert';
+
+  let text: string;
+
+  if (card.type === 'curse') {
+    text = `Sial! Kamu terkena ${card.title}.`;
+  } else if (card.tag === 'work') {
+    text = 'Kamu bekerja keras seharian.';
+  } else if (card.tag === 'social') {
+    const name = pickFriendName();
+    text = isExtrovert
+      ? `Kamu seru-seruan bareng ${name} seharian!`
+      : `Kamu nongkrong bareng ${name}.`;
+  } else if (card.tag === 'rest') {
+    text = 'Kamu tidur nyenyak memulihkan tenaga.';
+  } else if (card.tag === 'food') {
+    text = `Kamu menyantap ${card.title} yang lezat.`;
+  } else if (card.tag === 'fun') {
+    text = `Kamu menghabiskan waktu dengan ${card.title}.`;
+  } else if (card.tag === 'study' || card.id === 'belajar_ekstra') {
+    text = 'Kamu fokus menimba ilmu.';
+  } else {
+    text = `Kamu menjalani ${card.title}.`;
+  }
+
+  if (isIntrovert) {
+    text += ' (Kamu menikmati waktumu sendiri).';
+  }
+
+  return text;
 };
 
 let messageCounter = 0;
@@ -872,7 +916,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     if (crashPenalty > 0) {
       get().addLog(
-        'Aset investasi anjlok jadi nol',
+        'Aset investasimu anjlok jadi nol.',
         formatDelta(stats, nextStats),
       );
     }
@@ -894,6 +938,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       graduated,
       pathChoice,
       activeTrait,
+      friends,
     } = get();
 
     if (status !== 'playing' || activeEvent) return;
@@ -1052,8 +1097,11 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
     }
 
-    // Log aksi kartu (dicatat di umur saat kartu dimainkan, sebelum umur naik)
-    get().addLog('Memainkan ' + card.title, formatDelta(stats, next));
+    // Log aksi kartu bergaya narasi (dicatat di umur saat kartu dimainkan, sebelum umur naik)
+    get().addLog(
+      generateNarrative(card, activeTrait, friends),
+      formatDelta(stats, next),
+    );
 
     set({
       stats: next,
@@ -1109,7 +1157,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       const debtText = debtDelta > 0 ? `Utang +${debtDelta}` : `Utang ${debtDelta}`;
       eventDelta = eventDelta ? `${eventDelta}, ${debtText}` : debtText;
     }
-    get().addLog('Event: ' + activeEvent.title, eventDelta);
+    get().addLog(`Kamu menghadapi situasi: ${activeEvent.title}.`, eventDelta);
 
     set({
       stats: next,
