@@ -79,8 +79,6 @@ interface GameState {
   pathChoice: PathChoice;
   deathReason: string | null;
   isPhoneOpen: boolean;
-  playerName: string;
-  isProfileOpen: boolean;
   debt: number;
   friends: NPC[];
   socialFeed: NPC[];
@@ -101,7 +99,6 @@ interface GameState {
   playCard: (cardId: string) => void;
   resolveEvent: (choiceIndex: number) => void;
   togglePhone: () => void;
-  toggleProfile: () => void;
   borrowMoney: (amount: number) => void;
   payDebt: (amount: number) => void;
   setActiveApp: (app: PhoneApp) => void;
@@ -175,31 +172,6 @@ const HISTORY_INITIAL = 5;
 
 // Batas log agar memori tidak membengkak
 const LOG_MAX = 200;
-
-// Nama pemain acak
-const PLAYER_NAMES = [
-  'Alya',
-  'Bima',
-  'Citra',
-  'Dewa',
-  'Eka',
-  'Fajar',
-  'Gita',
-  'Hana',
-  'Indra',
-  'Jaya',
-  'Kirana',
-  'Laksmi',
-  'Mega',
-  'Nadia',
-  'Rafi',
-  'Sari',
-  'Wulan',
-  'Yoga',
-];
-
-const pickPlayerName = (): string =>
-  PLAYER_NAMES[Math.floor(Math.random() * PLAYER_NAMES.length)];
 
 // Beban tambahan saat kartu curse dimainkan
 const CURSE_PENALTY: Stats = {
@@ -482,8 +454,6 @@ export const useGameStore = create<GameState>((set, get) => ({
   pathChoice: 'none',
   deathReason: null,
   isPhoneOpen: false,
-  playerName: '',
-  isProfileOpen: false,
   debt: 0,
   friends: defaultFriends(),
   socialFeed: [],
@@ -535,8 +505,6 @@ export const useGameStore = create<GameState>((set, get) => ({
       pathChoice: 'none',
       deathReason: null,
       isPhoneOpen: false,
-      playerName: pickPlayerName(),
-      isProfileOpen: false,
       debt: 0,
       friends: defaultFriends(),
       socialFeed: [],
@@ -654,8 +622,6 @@ export const useGameStore = create<GameState>((set, get) => ({
       pathChoice: 'none',
       deathReason: null,
       isPhoneOpen: false,
-      playerName: '',
-      isProfileOpen: false,
       debt: 0,
       friends: defaultFriends(),
       socialFeed: [],
@@ -707,23 +673,14 @@ export const useGameStore = create<GameState>((set, get) => ({
       major: null,
       graduated: false,
       isPhoneOpen: false,
-      isProfileOpen: false,
     });
   },
 
   togglePhone: () => {
     set((s) => ({
       isPhoneOpen: !s.isPhoneOpen,
-      isProfileOpen: false,
       activeApp: 'home',
       activeChatId: null,
-    }));
-  },
-
-  toggleProfile: () => {
-    set((s) => ({
-      isProfileOpen: !s.isProfileOpen,
-      isPhoneOpen: false,
     }));
   },
 
@@ -955,7 +912,6 @@ export const useGameStore = create<GameState>((set, get) => ({
         : get().deathReason,
       activeEvent: dead ? null : get().activeEvent,
       isPhoneOpen: dead ? false : get().isPhoneOpen,
-      isProfileOpen: dead ? false : get().isProfileOpen,
     });
 
     if (crashPenalty > 0) {
@@ -1159,7 +1115,6 @@ export const useGameStore = create<GameState>((set, get) => ({
       deathReason,
       activeEvent: event,
       isPhoneOpen: lost || awaitingPath ? false : get().isPhoneOpen,
-      isProfileOpen: lost ? false : get().isProfileOpen,
     });
 
     // Log ulang tahun (umur sudah naik, tercatat di umur baru)
@@ -1210,7 +1165,6 @@ export const useGameStore = create<GameState>((set, get) => ({
       activeEvent: null,
       status: dead ? 'lost' : 'playing',
       deathReason: dead ? statDeathReason(next) : null,
-      isProfileOpen: dead ? false : get().isProfileOpen,
     });
   },
 }));
